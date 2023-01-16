@@ -95,6 +95,7 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
       })
 
     service = ecs.FargateService(self,'Service',
+      service_name='youtube-download',
       task_definition= task_definition,
       assign_public_ip=False,
       platform_version= ecs.FargatePlatformVersion.LATEST,

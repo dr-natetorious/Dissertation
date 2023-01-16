@@ -95,6 +95,7 @@ class OpenPoseConstruct(Construct, IQueuedTask):
       })
 
     service = ecs.FargateService(self,'Service',
+      service_name='openpose-analysis',
       task_definition= task_definition,
       assign_public_ip=False,
       platform_version= ecs.FargatePlatformVersion.LATEST,
