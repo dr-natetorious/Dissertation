@@ -14,7 +14,7 @@ from aws_cdk import(
 
 ROOT_DIR = path.join(path.dirname(__file__),'..')
 
-class YouTubeDownloadConstruct(Construct, IQueuedTask):
+class OpenPoseConstruct(Construct, IQueuedTask):
 
   @property
   def task_queue(self)->sqs.IQueue:
@@ -24,11 +24,15 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
   def task_queue(self,value)->None:
     self.__task_queue = value
 
+  # @property
+  # def status_table(self)->ddb.ITable:
+  #   raise self.__status_table
+
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure) -> None:
     super().__init__(scope, id)
 
     self.task_queue = sqs.Queue(self,'TaskQueue')
-    status_table = ddb.Table(self,'StatusTable',
+    self.status_table = ddb.Table(self,'StatusTable',
       billing_mode=ddb.BillingMode.PAY_PER_REQUEST,
       point_in_time_recovery=True,
       table_class= ddb.TableClass.STANDARD,
@@ -43,13 +47,12 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
       max_scaling_capacity=0,
       min_scaling_capacity=0,
       vpc= infra.network.vpc,
-      image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','collection')),
+      image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','analyze')),
       platform_version= ecs.FargatePlatformVersion.LATEST,
       task_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       environment={
         'TASK_QUEUE_URL': self.task_queue.queue_url,
-        'STATUS_TABLE': status_table.table_name,
-        'DATA_BUCKET': infra.storage.data_bucket.bucket_name,
+        'STATUS_TABLE': self.status_table.table_name,
       },
       capacity_provider_strategies=[
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE_SPOT', weight=2),
@@ -57,11 +60,11 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
       ])
 
     self.task_queue.grant_consume_messages(service.task_definition.execution_role)
-    status_table.grant_read_write_data(service.task_definition.execution_role)
+    self.status_table.grant_read_write_data(service.task_definition.execution_role)
 
-class DataCollectionConstruct(Construct):
+class VideoProcessorConstruct(Construct):
   def __init__(self, scope:Construct, id:str, infra:IBaseInfrastructure,**kwargs)->None:
     super().__init__(scope,id,**kwargs)
     
-    self.youtube = YouTubeDownloadConstruct(self,'YouTube',infra=infra)
+    self.open_pose = OpenPoseConstruct(self,'OpenPose',infra=infra)
     return

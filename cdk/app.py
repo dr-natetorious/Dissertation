@@ -4,13 +4,16 @@ import aws_cdk as cdk
 from constructs import Construct
 from stacks.data_collection import DataCollectionConstruct
 from stacks.base_infra import BaseInfrastructureConstruct
+from stacks.analyze_video import VideoProcessorConstruct
 
 class KineticStack(cdk.Stack):
   def __init__(self, scope: Construct, id:str, **kwargs):
     super().__init__(scope,id, **kwargs)
 
     infra = BaseInfrastructureConstruct(self,'Infrastructure')
-    collector = DataCollectionConstruct(self,'DataCollection',infra=infra)
+    
+    DataCollectionConstruct(self,'DataCollection', infra=infra)
+    VideoProcessorConstruct(self,'VideoProcessor', infra=infra)
 
 class KineticApp(cdk.App):
   def __init__(self, **kwargs)->None:
