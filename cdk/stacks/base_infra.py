@@ -37,6 +37,7 @@ class ComputeConstruct(Construct, IComputeConstruct):
 
     self.__fargate_cluster = ecs.Cluster(self,'Fargate',
       enable_fargate_capacity_providers=True,
+      cluster_name='kinetic',
       container_insights=True,
       vpc=network.vpc)
 
