@@ -1,6 +1,7 @@
 import boto3
 import requests
 from os import path
+from mimetypes import guess_extension
 from subprocess import check_output
 from tempfile import gettempdir
 from config import Config
@@ -79,7 +80,13 @@ class MessageHandler:
     for format in json['streamingData']['formats']:
       itag = format['itag']
       url = format['url']
-      remote_file = 'video/%s/%s.stream' % (payload.video_id,itag)
+      mimeType = format['mimeType']
+      remote_file = 'video/%s/%s.%s' % (
+        payload.video_id,
+        itag,
+        MessageHandler.extension(mimeType)
+      )
+      
       self.fetch_file(payload.video_id, format,url,remote_file)
 
     self.sqs_client.delete_message(
@@ -102,6 +109,27 @@ class MessageHandler:
     json = loads(output)
     return json
 
+  @staticmethod
+  def extension(mimeType:str)->str:
+    type = guess_extension(mimeType)
+    if not type is None:
+      return type
+
+    mimeType = mimeType.split(';')[0].strip()
+    type = guess_extension(mimeType)
+    if not type is None:
+      return type
+
+    mimeType = mimeType.split('/')[-1].strip()
+    type = guess_extension(mimeType)
+    if not type is None:
+      return type
+
+    if not mimeType is None:
+      return '.%s' % mimeType
+
+    return '.stream'
+
   def fetch_file(self,video_id, definition, url, remote_file):
       download_stream = requests.get(url,stream=True)
       
@@ -109,7 +137,10 @@ class MessageHandler:
         Body=download_stream.content,
         Bucket=Config.DATA_BUCKET,
         Key=remote_file,
-        ContentType=definition['mimeType'])
+        ContentType=definition['mimeType'],
+        Metadata={
+          "itag"=definition['itag']
+        })
 
       self.s3_client.put_object(
         Body=dumps(definition,indent=2),
