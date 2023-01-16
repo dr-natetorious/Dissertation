@@ -6,6 +6,7 @@ from constructs import Construct
 from aws_cdk import(
     aws_ec2 as ec2,
     aws_s3 as s3,
+    aws_logs as logs,
     aws_sqs as sqs,
     aws_ecs as ecs,
     aws_dynamodb as ddb,
@@ -36,21 +37,70 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
       sort_key= ddb.Attribute(name='SortKey', type=ddb.AttributeType.STRING),
       time_to_live_attribute='Expiration')
 
-    service = ecs_p.QueueProcessingFargateService(self,'Service',
-      queue = self.task_queue,
-      memory_limit_mib=1024,
+
+    log_group = logs.LogGroup(self,'LogGroup',
+      retention= logs.RetentionDays.TWO_WEEKS)
+      #log_group_name='/natetorious/kinetic/youtube')
+
+    task_definition= ecs.FargateTaskDefinition(
+      self,'Definition',
       cpu=512,
-      max_scaling_capacity=0,
-      min_scaling_capacity=0,
-      vpc= infra.network.vpc,
-      image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','collection')),
-      platform_version= ecs.FargatePlatformVersion.LATEST,
-      task_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
+      memory_limit_mib=1024,
+      runtime_platform= ecs.RuntimePlatform(
+        cpu_architecture= ecs.CpuArchitecture.X86_64,
+        operating_system_family= ecs.OperatingSystemFamily.LINUX),
+    )
+    task_definition.add_container('Collector', 
+      #image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','collection')),
+      image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','analyze')),
+      container_name='youtube-download',
+      port_mappings=[
+        ecs.PortMapping(
+          name='health_check',
+          container_port=80,
+          host_port=80,
+          protocol= ecs.Protocol.TCP)
+      ],
+      logging= ecs.LogDrivers.aws_logs(
+        log_group= log_group,
+        stream_prefix='collector'
+      ),
+      essential=False,
       environment={
+        'AWS_REGION': cdk.Aws.REGION,
         'TASK_QUEUE_URL': self.task_queue.queue_url,
         'STATUS_TABLE': status_table.table_name,
         'DATA_BUCKET': infra.storage.data_bucket.bucket_name,
-      },
+        'AWS_XRAY_DAEMON_ADDRESS': '0.0.0.0:2000',
+      })
+
+    task_definition.add_container('XRay',
+      image= ecs.ContainerImage.from_registry(name='amazon/aws-xray-daemon'),
+      container_name='xray-sidecar',
+      memory_limit_mib=128,
+      essential=True,
+      logging= ecs.LogDrivers.aws_logs(
+        log_group=log_group,
+        stream_prefix='xray-sidecar'
+      ),
+      port_mappings=[
+        ecs.PortMapping(
+          name='xray_sidecar',
+          host_port=2000,
+          container_port=2000,
+          protocol=ecs.Protocol.UDP)
+      ],
+      environment={
+        'AWS_REGION': cdk.Aws.REGION
+      })
+
+    service = ecs.FargateService(self,'Service',
+      task_definition= task_definition,
+      assign_public_ip=False,
+      platform_version= ecs.FargatePlatformVersion.LATEST,
+      vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
+      cluster = infra.compute.fargate_cluster,
+      desired_count=0,
       capacity_provider_strategies=[
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE_SPOT', weight=2),
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE', weight=1)
@@ -58,6 +108,7 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
 
     self.task_queue.grant_consume_messages(service.task_definition.execution_role)
     status_table.grant_read_write_data(service.task_definition.execution_role)
+    infra.storage.data_bucket.grant_read_write(service.task_definition.execution_role)
 
 class DataCollectionConstruct(Construct):
   def __init__(self, scope:Construct, id:str, infra:IBaseInfrastructure,**kwargs)->None:

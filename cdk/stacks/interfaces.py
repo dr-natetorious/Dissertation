@@ -26,9 +26,9 @@ class IBaseInfrastructure:
     def network(self)->INetworkConstruct:
         raise NotImplementedError()
 
-    # @property
-    # def compute(self)->IComputeConstruct:
-    #     raise NotImplementedError()
+    @property
+    def compute(self)->IComputeConstruct:
+        raise NotImplementedError()
 
     @property
     def storage(self)->IDataStorage:

@@ -32,16 +32,13 @@ class ComputeConstruct(Construct, IComputeConstruct):
   def fargate_cluster(self)->ecs.ICluster:
     return self.__fargate_cluster
 
-  def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure, **kwargs) -> None:
+  def __init__(self, scope: Construct, id: builtins.str, network:INetworkConstruct, **kwargs) -> None:
     super().__init__(scope, id, **kwargs)
 
-    self.__fargate_cluster = ecs.Cluster(self,'FargateCluster',
+    self.__fargate_cluster = ecs.Cluster(self,'Fargate',
       enable_fargate_capacity_providers=True,
       container_insights=True,
-      vpc=infra.network.vpc,
-      capacity= ecs.AddCapacityOptions(
-        vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default')
-      ))
+      vpc=network.vpc)
 
 class DataStorageConstruct(Construct):
   
@@ -74,5 +71,5 @@ class BaseInfrastructureConstruct(Construct, IBaseInfrastructure):
     
     self.__network = NetworkConstruct(self,'Network')
     self.__storage = DataStorageConstruct(self,'Storage')
-    #self.__compute = ComputeConstruct(self,'Compute')
+    self.__compute = ComputeConstruct(self,'Compute', network=self.__network)
     return
