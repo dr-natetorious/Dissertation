@@ -5,6 +5,7 @@ import aws_cdk as cdk
 from constructs import Construct
 from aws_cdk import(
     aws_ec2 as ec2,
+    aws_iam as iam,
     aws_s3 as s3,
     aws_logs as logs,
     aws_sqs as sqs,
@@ -45,14 +46,15 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
     task_definition= ecs.FargateTaskDefinition(
       self,'Definition',
       cpu=512,
-      memory_limit_mib=1024,
+      memory_limit_mib=1024,      
       runtime_platform= ecs.RuntimePlatform(
         cpu_architecture= ecs.CpuArchitecture.X86_64,
         operating_system_family= ecs.OperatingSystemFamily.LINUX),
     )
+
     task_definition.add_container('Collector', 
-      #image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','collection')),
-      image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','analyze')),
+      image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','collection')),
+      #image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','analyze')),
       container_name='youtube-download',
       port_mappings=[
         ecs.PortMapping(
@@ -110,6 +112,9 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
     self.task_queue.grant_consume_messages(service.task_definition.execution_role)
     status_table.grant_read_write_data(service.task_definition.execution_role)
     infra.storage.data_bucket.grant_read_write(service.task_definition.execution_role)
+    task_definition.execution_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name(
+      'arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess'
+    ))
 
 class DataCollectionConstruct(Construct):
   def __init__(self, scope:Construct, id:str, infra:IBaseInfrastructure,**kwargs)->None:

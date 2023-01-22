@@ -9,7 +9,7 @@ from handler import MessageHandler
 Configure the clients
 '''
 sqs_client = boto3.client('sqs', region_name=Config.REGION_NAME)
-message_handler = MessageHandler(sqs_client)
+message_handler = MessageHandler()
 
 def shutdown(signnum, frame):
   print('Caught SIGTERM, exiting')
