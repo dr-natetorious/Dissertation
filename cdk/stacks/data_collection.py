@@ -54,7 +54,6 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
 
     task_definition.add_container('Collector', 
       image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','collection')),
-      #image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','analyze')),
       container_name='youtube-download',
       port_mappings=[
         ecs.PortMapping(
@@ -67,7 +66,7 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
         log_group= log_group,
         stream_prefix='collector'
       ),
-      essential=False,
+      essential=True,
       environment={
         'AWS_REGION': cdk.Aws.REGION,
         'TASK_QUEUE_URL': self.task_queue.queue_url,
@@ -97,24 +96,23 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
       })
 
     service = ecs.FargateService(self,'Service',
-      service_name='youtube-download',
+      service_name='youtube-collector',
       task_definition= task_definition,
       assign_public_ip=False,
       platform_version= ecs.FargatePlatformVersion.LATEST,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       cluster = infra.compute.fargate_cluster,
-      desired_count=0,
+      desired_count=1,
       capacity_provider_strategies=[
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE_SPOT', weight=2),
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE', weight=1)
       ])
 
-    self.task_queue.grant_consume_messages(service.task_definition.execution_role)
-    status_table.grant_read_write_data(service.task_definition.execution_role)
-    infra.storage.data_bucket.grant_read_write(service.task_definition.execution_role)
-    task_definition.execution_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name(
-      'arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess'
-    ))
+    self.task_queue.grant_consume_messages(service.task_definition.task_role)
+    status_table.grant_read_write_data(service.task_definition.task_role)
+    infra.storage.data_bucket.grant_read_write(service.task_definition.task_role)
+    task_definition.task_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AWSXrayWriteOnlyAccess'))
+    #task_definition.execution_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSQSFullAccess'))
 
 class DataCollectionConstruct(Construct):
   def __init__(self, scope:Construct, id:str, infra:IBaseInfrastructure,**kwargs)->None:

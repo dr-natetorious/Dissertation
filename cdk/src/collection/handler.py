@@ -62,7 +62,11 @@ def make_template(video_id):
   return template
 
 def make_command(local_file):
-  command = '''curl "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8" -H "Content-Type: application/json" --data "@%s"''' % local_file
+  #command = '''curl "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8" -H "Content-Type: application/json" --data "@%s"''' % local_file
+  command = ['curl',"https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
+     '-H', "Content-Type: application/json",
+     '--data', '@'+local_file
+  ]
   return command
 
 class MessageHandler:
@@ -98,7 +102,6 @@ class MessageHandler:
         itag,
         MessageHandler.extension(mimeType)
       )
-            
       self.fetch_video_stream(payload.video_id, format,url,remote_file)
 
     self.status_table.set_video_status(payload.video_id, DownloadStatus.COMPLETE)
@@ -151,6 +154,8 @@ class MessageHandler:
     status,lastUpdated = self.status_table.get_stream_status(video_id,remote_file)
     if status == DownloadStatus.COMPLETE:
       return
+
+    print('[FETCH VIDEO] video=%s to %s' % (video_id, remote_file))
 
     # if status == DownloadStatus.IN_PROGRESS:
     #   timeout = datetime.utcnow() + timedelta(days=1)
