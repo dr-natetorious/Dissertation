@@ -9,6 +9,7 @@ ddb_client = boto3.client('dynamodb', region_name=Config.REGION_NAME)
 
 class DownloadStatus(Enum):
   NONE='NONE',
+  ERROR='ERROR'
   IN_PROGRESS='IN_PROGRESS'
   COMPLETE='COMPLETE'
 

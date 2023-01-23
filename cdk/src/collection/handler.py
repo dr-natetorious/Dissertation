@@ -9,6 +9,7 @@ from subprocess import check_output
 from tempfile import gettempdir
 from config import Config
 from json import loads, dumps
+from aws_xray_sdk.core import xray_recorder
 
 class Payload:
   def __init__(self, json) -> None:
@@ -80,19 +81,27 @@ class MessageHandler:
     self.s3_client = boto3.client('s3', region_name=Config.REGION_NAME)
     self.status_table = StatusTable(Config.STATUS_TABLE)
 
+  @xray_recorder.capture('process')
   def process(self,message:dict)->None:
     receipt_handle = message['ReceiptHandle']
     payload = Payload(message['Body'])
     _ = message['Attributes']
 
     status, _ = self.status_table.get_video_status(payload.video_id)
-    if status == DownloadStatus.COMPLETE:
+    if status in [DownloadStatus.COMPLETE, DownloadStatus.ERROR]:
       self.sqs_client.delete_message(
         QueueUrl=Config.TASK_QUEUE_URL,
         ReceiptHandle=receipt_handle)
       return
 
     json = self.get_video_info(payload.video_id)
+    if 'streamingData' not in json:
+      self.status_table.set_video_status(payload.video_id, DownloadStatus.ERROR)
+      self.sqs_client.delete_message(
+        QueueUrl=Config.TASK_QUEUE_URL,
+        ReceiptHandle=receipt_handle)
+      return
+
     for format in json['streamingData']['formats']:
       itag = format['itag']
       url = format['url']
@@ -102,7 +111,11 @@ class MessageHandler:
         itag,
         MessageHandler.extension(mimeType)
       )
-      self.fetch_video_stream(payload.video_id, format,url,remote_file)
+      try:
+        self.fetch_video_stream(payload.video_id, format,url,remote_file)
+        break
+      except Exception as e:
+        self.status_table.set_stream_status(payload.video_id, remote_file, DownloadStatus.ERROR)
 
     self.status_table.set_video_status(payload.video_id, DownloadStatus.COMPLETE)
     self.sqs_client.delete_message(
@@ -146,6 +159,7 @@ class MessageHandler:
 
     return 'stream'
 
+  @xray_recorder.capture('fetch_video_stream')
   def fetch_video_stream(self,video_id, definition, url, remote_file):
     '''
     Downloads the specified a video stream.
@@ -197,9 +211,3 @@ class MessageHandler:
           "itag":str(definition['itag']),
           "quality": definition['quality'] if 'quality' in definition else 'unknown'
         })
-
-      # self.s3_client.put_object(
-      #   Body=dumps(definition,indent=2),
-      #   Bucket=Config.DATA_BUCKET,
-      #   Key='%s.manifest' % remote_file,
-      #   ContentType='application/json')

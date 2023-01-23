@@ -30,26 +30,28 @@ def configure_xray():
   
 
 def main_loop():
-  
-  print('Monitoring Task Queue: %s' % Config.TASK_QUEUE_URL)
-  print('Using Status Table   : %s' % Config.STATUS_TABLE)
-  print('Persisting into      : s3://%s' % Config.DATA_BUCKET)
+  # print('Monitoring Task Queue: %s' % Config.TASK_QUEUE_URL)
+  # print('Using Status Table   : %s' % Config.STATUS_TABLE)
+  # print('Persisting into      : s3://%s' % Config.DATA_BUCKET)
 
   while True:
-    response = sqs_client.receive_message(
-      QueueUrl=Config.TASK_QUEUE_URL,
-      AttributeNames=['All'],
-      MaxNumberOfMessages=1,
-      VisibilityTimeout=300,
-      WaitTimeSeconds=15)
+    xray_recorder.begin_segment('MainLoop')
+    try:
+      response = sqs_client.receive_message(
+        QueueUrl=Config.TASK_QUEUE_URL,
+        AttributeNames=['All'],
+        MaxNumberOfMessages=1,
+        VisibilityTimeout=300,
+        WaitTimeSeconds=15)
 
-    for message in response['Messages']:
-      message_handler.process(message)
+      for message in response['Messages']:
+        message_handler.process(message)
+    finally:
+      xray_recorder.end_segment()
 
     friendly_sleep(Config.LOOP_SLEEP_SEC)
 
 if __name__ == '__main__':
   configure_xray()
-  xray_recorder.begin_segment('MainSegment')
   signal(SIGTERM, shutdown)
   main_loop()

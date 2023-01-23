@@ -102,7 +102,7 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
       platform_version= ecs.FargatePlatformVersion.LATEST,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       cluster = infra.compute.fargate_cluster,
-      desired_count=1,
+      desired_count=10,
       capacity_provider_strategies=[
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE_SPOT', weight=2),
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE', weight=1)
