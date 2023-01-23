@@ -6,6 +6,9 @@ from config import Config
 from handler import MessageHandler
 from aws_xray_sdk.core import xray_recorder, patch_all
 
+FIFTEEN_MIN = 60*15
+FIFTEEN_SEC = 15
+
 '''
 Configure the clients
 '''
@@ -41,8 +44,8 @@ def main_loop():
         QueueUrl=Config.TASK_QUEUE_URL,
         AttributeNames=['All'],
         MaxNumberOfMessages=1,
-        VisibilityTimeout=300,
-        WaitTimeSeconds=15)
+        VisibilityTimeout= FIFTEEN_MIN,
+        WaitTimeSeconds=FIFTEEN_SEC)
 
       for message in response['Messages']:
         message_handler.process(message)

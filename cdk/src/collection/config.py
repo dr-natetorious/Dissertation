@@ -5,7 +5,7 @@ class Config:
   TASK_QUEUE_URL = environ.get('TASK_QUEUE_URL')
   STATUS_TABLE = environ.get('STATUS_TABLE')
   DATA_BUCKET = environ.get('DATA_BUCKET')
-  LOOP_SLEEP_SEC = int(environ.get('LOOP_SLEEP_SEC', 10))
+  LOOP_SLEEP_SEC = int(environ.get('LOOP_SLEEP_SEC', 0))
 
   @staticmethod
   def validate():

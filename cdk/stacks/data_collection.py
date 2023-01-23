@@ -29,7 +29,15 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure) -> None:
     super().__init__(scope, id)
 
-    self.task_queue = sqs.Queue(self,'TaskQueue')
+    self.task_queue = sqs.Queue(self,'TaskQueue',
+      retention_period=cdk.Duration.days(14),
+      dead_letter_queue=sqs.DeadLetterQueue(
+        max_receive_count=1,
+        queue= sqs.Queue(self,'DLQ',
+          retention_period=cdk.Duration.days(14))
+        )
+      )
+
     status_table = ddb.Table(self,'StatusTable',
       billing_mode=ddb.BillingMode.PAY_PER_REQUEST,
       point_in_time_recovery=True,
@@ -45,8 +53,8 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
 
     task_definition= ecs.FargateTaskDefinition(
       self,'Definition',
-      cpu=512,
-      memory_limit_mib=1024,      
+      cpu=256,
+      memory_limit_mib=512,
       runtime_platform= ecs.RuntimePlatform(
         cpu_architecture= ecs.CpuArchitecture.X86_64,
         operating_system_family= ecs.OperatingSystemFamily.LINUX),
@@ -78,7 +86,7 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
     task_definition.add_container('XRay',
       image= ecs.ContainerImage.from_registry(name='amazon/aws-xray-daemon'),
       container_name='xray-sidecar',
-      memory_limit_mib=128,
+      #memory_limit_mib=128,
       essential=True,
       logging= ecs.LogDrivers.aws_logs(
         log_group=log_group,
@@ -98,11 +106,11 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
     service = ecs.FargateService(self,'Service',
       service_name='youtube-collector',
       task_definition= task_definition,
-      assign_public_ip=False,
+      assign_public_ip=False,      
       platform_version= ecs.FargatePlatformVersion.LATEST,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       cluster = infra.compute.fargate_cluster,
-      desired_count=10,
+      desired_count=300,
       capacity_provider_strategies=[
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE_SPOT', weight=2),
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE', weight=1)

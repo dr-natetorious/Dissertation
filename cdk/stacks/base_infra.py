@@ -47,11 +47,18 @@ class DataStorageConstruct(Construct):
   def data_bucket(self)->s3.IBucket:
     return self.__data_bucket
 
+  @property
+  def inventory_bucket(self)->s3.IBucket:
+    return self.__inventory_bucket
+
   def __init__(self, scope: Construct, id: builtins.str) -> None:
     super().__init__(scope, id)
 
     self.__data_bucket = s3.Bucket.from_bucket_name(self,'DataBucket', 
       bucket_name='data.dissertation.natetorio.us')
+
+    self.__inventory_bucket = s3.Bucket.from_bucket_name(self,'InventoryBucket', 
+      bucket_name='inventory.us-east-2.dissertation.natetorio.us')
 
 class BaseInfrastructureConstruct(Construct, IBaseInfrastructure):
   
