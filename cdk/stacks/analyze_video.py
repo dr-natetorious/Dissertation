@@ -30,6 +30,7 @@ class OpenPoseConstruct(Construct, IQueuedTask):
     super().__init__(scope, id)
 
     self.task_queue = sqs.Queue(self,'TaskQueue',
+      queue_name='openpose-tasks',
       retention_period=cdk.Duration.days(14),
       dead_letter_queue=sqs.DeadLetterQueue(
         max_receive_count=1,
@@ -37,6 +38,7 @@ class OpenPoseConstruct(Construct, IQueuedTask):
           retention_period=cdk.Duration.days(14))
         )
       )
+      
 
     status_table = ddb.Table(self,'StatusTable',
       billing_mode=ddb.BillingMode.PAY_PER_REQUEST,
