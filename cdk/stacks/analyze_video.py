@@ -6,6 +6,7 @@ from constructs import Construct
 from aws_cdk import(
     aws_ec2 as ec2,
     aws_s3 as s3,
+    aws_iam as iam,
     aws_sqs as sqs,
     aws_ecs as ecs,
     aws_logs as logs,
@@ -28,7 +29,15 @@ class OpenPoseConstruct(Construct, IQueuedTask):
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure) -> None:
     super().__init__(scope, id)
 
-    self.task_queue = sqs.Queue(self,'TaskQueue')
+    self.task_queue = sqs.Queue(self,'TaskQueue',
+      retention_period=cdk.Duration.days(14),
+      dead_letter_queue=sqs.DeadLetterQueue(
+        max_receive_count=1,
+        queue= sqs.Queue(self,'DLQ',
+          retention_period=cdk.Duration.days(14))
+        )
+      )
+
     status_table = ddb.Table(self,'StatusTable',
       billing_mode=ddb.BillingMode.PAY_PER_REQUEST,
       point_in_time_recovery=True,
@@ -44,16 +53,16 @@ class OpenPoseConstruct(Construct, IQueuedTask):
 
     task_definition= ecs.FargateTaskDefinition(
       self,'Definition',
-      cpu=512,
-      memory_limit_mib=1024,
+      cpu=256,
+      memory_limit_mib=512,
       runtime_platform= ecs.RuntimePlatform(
         cpu_architecture= ecs.CpuArchitecture.X86_64,
         operating_system_family= ecs.OperatingSystemFamily.LINUX),
     )
-    task_definition.add_container('Collector', 
-      #image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','collection')),
+
+    task_definition.add_container('OpenPose', 
       image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','analyze')),
-      container_name='youtube-download',
+      container_name='openpose-analyzer',
       port_mappings=[
         ecs.PortMapping(
           name='health_check',
@@ -63,9 +72,9 @@ class OpenPoseConstruct(Construct, IQueuedTask):
       ],
       logging= ecs.LogDrivers.aws_logs(
         log_group= log_group,
-        stream_prefix='collector'
+        stream_prefix='analyzer'
       ),
-      essential=False,
+      essential=True,
       environment={
         'AWS_REGION': cdk.Aws.REGION,
         'TASK_QUEUE_URL': self.task_queue.queue_url,
@@ -77,7 +86,7 @@ class OpenPoseConstruct(Construct, IQueuedTask):
     task_definition.add_container('XRay',
       image= ecs.ContainerImage.from_registry(name='amazon/aws-xray-daemon'),
       container_name='xray-sidecar',
-      memory_limit_mib=128,
+      #memory_limit_mib=128,
       essential=True,
       logging= ecs.LogDrivers.aws_logs(
         log_group=log_group,
@@ -95,9 +104,9 @@ class OpenPoseConstruct(Construct, IQueuedTask):
       })
 
     service = ecs.FargateService(self,'Service',
-      service_name='openpose-analysis',
+      service_name='analyzer',
       task_definition= task_definition,
-      assign_public_ip=False,
+      assign_public_ip=False,      
       platform_version= ecs.FargatePlatformVersion.LATEST,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       cluster = infra.compute.fargate_cluster,
@@ -107,9 +116,10 @@ class OpenPoseConstruct(Construct, IQueuedTask):
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE', weight=1)
       ])
 
-    self.task_queue.grant_consume_messages(service.task_definition.execution_role)
-    status_table.grant_read_write_data(service.task_definition.execution_role)
-    infra.storage.data_bucket.grant_read_write(service.task_definition.execution_role)
+    self.task_queue.grant_consume_messages(service.task_definition.task_role)
+    status_table.grant_read_write_data(service.task_definition.task_role)
+    infra.storage.data_bucket.grant_read_write(service.task_definition.task_role)
+    task_definition.task_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AWSXrayWriteOnlyAccess'))
 
 class VideoProcessorConstruct(Construct):
   def __init__(self, scope:Construct, id:str, infra:IBaseInfrastructure,**kwargs)->None:
