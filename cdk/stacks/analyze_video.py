@@ -74,7 +74,7 @@ class OpenPoseConstruct(Construct, IQueuedTask):
         log_group= log_group,
         stream_prefix='analyzer'
       ),
-      essential=True,
+      essential=False,
       environment={
         'AWS_REGION': cdk.Aws.REGION,
         'TASK_QUEUE_URL': self.task_queue.queue_url,
@@ -104,7 +104,7 @@ class OpenPoseConstruct(Construct, IQueuedTask):
       })
 
     service = ecs.FargateService(self,'Service',
-      service_name='analyzer',
+      service_name='openpose-analysis',
       task_definition= task_definition,
       assign_public_ip=False,      
       platform_version= ecs.FargatePlatformVersion.LATEST,
