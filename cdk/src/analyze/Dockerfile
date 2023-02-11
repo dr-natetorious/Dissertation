@@ -1,33 +1,44 @@
+# FROM nvidia/cuda:10.0-cudnn7-devel
+
+# #get deps
+# RUN apt-get update && \
+# DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+# python3-dev python3-pip git g++ wget make libprotobuf-dev protobuf-compiler libopencv-dev \
+# libgoogle-glog-dev libboost-all-dev libcaffe-cuda-dev libhdf5-dev libatlas-base-dev
+
+# #for python api
+# RUN pip3 install numpy opencv-python 
+
+# #replace cmake as old version has CUDA variable bugs
+# RUN wget https://github.com/Kitware/CMake/releases/download/v3.16.0/cmake-3.16.0-Linux-x86_64.tar.gz && \
+# tar xzf cmake-3.16.0-Linux-x86_64.tar.gz -C /opt && \
+# rm cmake-3.16.0-Linux-x86_64.tar.gz
+# ENV PATH="/opt/cmake-3.16.0-Linux-x86_64/bin:${PATH}"
+
+# #get openpose
+# WORKDIR /openpose
+# RUN git clone https://github.com/CMU-Perceptual-Computing-Lab/openpose.git .
+
+# #build it
+# WORKDIR /openpose/build
+# RUN cmake -DBUILD_PYTHON=ON .. && make -j `nproc`
+
 FROM cwaffles/openpose
 
+#setup pyopenpose
 WORKDIR /openpose/build/python/openpose
 RUN make install
 
+# setup env
 WORKDIR /openpose/build/python/openpose
 RUN cp ./pyopenpose.cpython-36m-x86_64-linux-gnu.so /usr/local/lib/python3.6/dist-packages
 WORKDIR /usr/local/lib/python3.6/dist-packages
 RUN ln -s pyopenpose.cpython-36m-x86_64-linux-gnu.so pyopenpose
-ENV LD_LIBRARY_PATH=/openpose/build/python/openpose
+ENV LD_LIBRARY_PATH=/openpose/build/python/openpose:${LD_LIBRARY_PATH}
 
+# setup models
 WORKDIR /openpose/models
-RUN chmod a+x getModels.sh && ./getModels.sh
+RUN  ./getModels.sh
 
-# FROM python:3.9 as build
+WORKDIR /openpose
 
-# RUN apt-get -y update && \
-#   && apt-get -y install cmake linux-headers-5.10.0-21-common
-
-# # Install NVDIA support
-# WORKDIR /usr/local/cuda/
-# RUN wget https://developer.download.nvidia.com/compute/cuda/repos/debian10/x86_64/cuda-keyring_1.0-1_all.deb && \
-#   dpkg -i cuda-keyring_1.0-1_all.deb && \
-#   add-apt-repository contrib && \
-#   apt-get update && \
-#   apt-get -y install cuda
-
-# WORKDIR /usr/local/src/
-# RUN git clone https://github.com/CMU-Perceptual-Computing-Lab/openpose && \
-#   cd openpose && \
-#   git submodule update --init --recursive --remote
-
-# #RUN pip3 install -r requirements.txt
