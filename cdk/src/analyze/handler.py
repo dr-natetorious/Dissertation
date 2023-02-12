@@ -1,9 +1,9 @@
-import boto3
 from tempfile import gettempdir
 from pathlib import Path
 from json import loads
 from config import Config
 from payload import Payload
+from aws import AWS
 from skeletal_extract import SkeletonExtractor
 from status import StatusTable, AnalyzeStatus
 from aws_xray_sdk.core import xray_recorder
@@ -15,8 +15,7 @@ status_table = StatusTable(Config.STATUS_TABLE)
 
 class MessageHandler:
   def __init__(self) -> None:
-    self.sqs_client = boto3.client('sqs', region_name=Config.REGION_NAME)
-    self.s3_client = boto3.client('s3', region_name=Config.REGION_NAME)
+    return
 
   @xray_recorder.capture('process')
   def process(self,message:dict)->None:
@@ -29,7 +28,7 @@ class MessageHandler:
     xray_recorder.current_segment().put_annotation('status', str(status.value))
     
     if status == AnalyzeStatus.COMPLETE:
-      self.sqs_client.delete_message(
+      AWS.sqs.delete_message(
         QueueUrl=Config.TASK_QUEUE_URL,
         ReceiptHandle=receipt_handle)
       return
@@ -38,22 +37,29 @@ class MessageHandler:
     try:
       extractor = SkeletonExtractor(payload, local_file)
       extractor.open()
-      extractor.process_frames()
+      report = extractor.process_frames()
+      report.save()
       extractor.close()
     finally:
       local_file.unlink()
 
-    self.sqs_client.delete_message(
+    status_table.set_video_status(payload.video_id, AnalyzeStatus.COMPLETE)
+    AWS.sqs.delete_message(
         QueueUrl=Config.TASK_QUEUE_URL,
         ReceiptHandle=receipt_handle)
+
     return
     
 
   @xray_recorder.capture('download_file')
   def download_file(self, payload:Payload)->Path:
     local_path = temp_folder.joinpath(payload.video_id+".mp4")
-    self.s3_client.download_file(
-      payload.url.bucket,
-      payload.url.object_key,
-      str(local_path))
+    response = AWS.s3.get_object(
+      Bucket=payload.url.bucket,
+      Key=payload.url.object_key
+    )
+
+    with open(local_path,'wb') as f:
+      f.write(response['Body'].read())
+
     return local_path

@@ -1,12 +1,11 @@
-import boto3
 from typing import Tuple
 from enum import Enum
 from datetime import datetime
 from time import mktime
 from config import Config
+from aws import AWS
 from aws_xray_sdk.core import xray_recorder
 
-ddb_client = boto3.client('dynamodb', region_name=Config.REGION_NAME)
 
 class AnalyzeStatus(Enum):
   NONE='NONE',
@@ -25,7 +24,7 @@ class StatusTable:
 
   @xray_recorder.capture('get_video_status')
   def get_video_status(self,video_id:str)->Tuple[AnalyzeStatus, datetime]:
-    response = ddb_client.get_item(
+    response = AWS.ddb.get_item(
       TableName=Config.STATUS_TABLE,
       Key={
         'VideoId': {'S': 'Analyzer::%s' % video_id},
@@ -44,7 +43,7 @@ class StatusTable:
 
   @xray_recorder.capture('set_video_status')
   def set_video_status(self, video_id:str, status:AnalyzeStatus)->None:
-    response = ddb_client.update_item(
+    response = AWS.ddb.update_item(
       TableName=Config.STATUS_TABLE,
       Key={
         'VideoId': {'S': 'Analyzer::%s' % video_id},

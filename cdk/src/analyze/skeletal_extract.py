@@ -2,6 +2,8 @@ from typing import List
 from pathlib import Path
 from payload import Payload
 from config import Config
+from report import Report
+from aws_xray_sdk.core import xray_recorder
 import pyopenpose as op
 import cv2
 
@@ -10,11 +12,14 @@ MILLISEC_PER_SEC = 1000
 def create_params()->dict:
   params = {
     "model_folder": Config.MODEL_FOLDER,
-    "face": True,
-    "hand": True
+    "face": False,
+    "hand": False
   }
   return params
-  
+
+opWrapper = op.WrapperPython()
+opWrapper.configure(create_params())
+opWrapper.start()
 
 class SkeletonExtractor:
 
@@ -30,7 +35,7 @@ class SkeletonExtractor:
   def local_file(self)->str:
     return self.__local_file
 
-  @payload.setter
+  @local_file.setter
   def local_file(self,value)->None:
     self.__local_file = value
 
@@ -40,10 +45,9 @@ class SkeletonExtractor:
 
   def open(self):
     self.capture = cv2.VideoCapture(self.local_file)
-    print('VideoCapture(%s) isOpen=%s' % (self.local_file, self.capture.isOpened()))
-    
-    #self.capture.open()
-    #self.capture.set(cv2.CAP_PROP_POS_MSEC, int(self.payload.start_sec * MILLISEC_PER_SEC))
+    if not self.capture.isOpened():
+      raise Exception('VideoCapture(%s) isOpen=%s' % (self.local_file, self.capture.isOpened()))
+    return
 
   def close(self):
     if self.capture is None:
@@ -57,23 +61,22 @@ class SkeletonExtractor:
     offset = self.payload.start_sec
     while offset < self.payload.end_sec:
       self.capture.set(cv2.CAP_PROP_POS_MSEC, int(offset * MILLISEC_PER_SEC))
-      offset += step_size_sec
-
+      
       _, frame = self.capture.read()
-      if frame == None:
-        continue
-      results.append(frame)
+      if frame is None:
+        break
+      results.append((frame,offset))
+      offset += step_size_sec
       
     return results
 
-  def process_frames(self):
-    opWrapper = op.WrapperPython()
-    opWrapper.configure(create_params())
-    opWrapper.start()
-
-    for frame in self.frames():
+  @xray_recorder.capture('process_frames')
+  def process_frames(self)->Report:
+    report = Report(self.payload)
+    for frame, offset in self.frames():
       datum = op.Datum()
       datum.cvInputData = frame
       opWrapper.emplaceAndPop([datum])
-      body = datum.poseKeypoints
-      print(str(body))
+      report.add_frame_node(datum, offset)
+    
+    return report

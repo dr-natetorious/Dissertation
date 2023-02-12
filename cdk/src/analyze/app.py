@@ -1,20 +1,13 @@
-import boto3
 from time import sleep
 from signal import signal, SIGTERM
 from config import Config
 from handler import MessageHandler
+from aws import AWS
 from aws_xray_sdk.core import xray_recorder, patch_all
 
 FIFTEEN_SEC = 15
 SIXTY_SEC = 60
 FIFTEEN_MIN = 15 * SIXTY_SEC
-
-
-'''
-Configure the clients
-'''
-sqs_client = boto3.client('sqs', region_name=Config.REGION_NAME)
-message_handler = MessageHandler()
 
 def shutdown(signnum, frame):
   print('Caught SIGTERM, exiting')
@@ -30,7 +23,7 @@ def configure_xray():
     plugins=('EC2Plugin','ECSPlugin'),
     sampling=False
   )
-  #patch_all()
+  patch_all()
   
 
 def main_loop():
@@ -38,10 +31,11 @@ def main_loop():
   # print('Using Status Table   : %s' % Config.STATUS_TABLE)
   # print('Persisting into      : s3://%s' % Config.DATA_BUCKET)
 
+  message_handler = MessageHandler()
   while True:
     xray_recorder.begin_segment('MainLoop')
     try:
-      response = sqs_client.receive_message(
+      response = AWS.sqs.receive_message(
         QueueUrl=Config.TASK_QUEUE_URL,
         AttributeNames=['All'],
         MaxNumberOfMessages=1,

@@ -58,7 +58,8 @@ RUN pip3 install debugpy
 # ######################################################
 # # Prod Layer
 # ######################################################
+FROM base as prod
 
-# WORKDIR /usr/local/bin/analyze
-# COPY 
-# RUN pip3 install -r requirements.txt
+WORKDIR /usr/local/bin/analyze
+COPY . .
+CMD [ "/usr/local/bin/analyze/app.py" ]
