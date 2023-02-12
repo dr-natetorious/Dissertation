@@ -37,8 +37,16 @@ class MessageHandler:
     local_file = self.download_file(payload)
     try:
       extractor = SkeletonExtractor(payload, local_file)
+      extractor.open()
+      extractor.process_frames()
+      extractor.close()
     finally:
-      local_file.unlink(missing_ok=True)
+      local_file.unlink()
+
+    self.sqs_client.delete_message(
+        QueueUrl=Config.TASK_QUEUE_URL,
+        ReceiptHandle=receipt_handle)
+    return
     
 
   @xray_recorder.capture('download_file')
@@ -47,5 +55,5 @@ class MessageHandler:
     self.s3_client.download_file(
       payload.url.bucket,
       payload.url.object_key,
-      local_path)
+      str(local_path))
     return local_path

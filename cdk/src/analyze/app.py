@@ -5,6 +5,7 @@ from config import Config
 from handler import MessageHandler
 from aws_xray_sdk.core import xray_recorder, patch_all
 
+FIFTEEN_SEC = 15
 SIXTY_SEC = 60
 FIFTEEN_MIN = 15 * SIXTY_SEC
 
@@ -29,7 +30,7 @@ def configure_xray():
     plugins=('EC2Plugin','ECSPlugin'),
     sampling=False
   )
-  patch_all()
+  #patch_all()
   
 
 def main_loop():
@@ -44,8 +45,8 @@ def main_loop():
         QueueUrl=Config.TASK_QUEUE_URL,
         AttributeNames=['All'],
         MaxNumberOfMessages=1,
-        VisibilityTimeout= FIFTEEN_MIN,
-        WaitTimeSeconds=SIXTY_SEC)
+        VisibilityTimeout= FIFTEEN_SEC, #FIFTEEN_MIN,
+        WaitTimeSeconds=FIFTEEN_SEC)
 
       if not 'Messages' in response:
         continue

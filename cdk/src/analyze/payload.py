@@ -38,4 +38,4 @@ class Payload:
     self.video_id:str = self.json['video_id']
     self.url = S3Uri(self.json['properties']['s3uri'])
     self.label:str = self.json['properties']['annotations']['label']
-    self.start_sec, self.end_sec = self.json['properties']['annotation']['segments']
+    self.start_sec, self.end_sec = self.json['properties']['annotations']['segment']

@@ -27,7 +27,7 @@ class SkeletonExtractor:
     self.__payload = value
 
   @property
-  def local_file(self)->Path:
+  def local_file(self)->str:
     return self.__local_file
 
   @payload.setter
@@ -36,11 +36,14 @@ class SkeletonExtractor:
 
   def __init__(self, payload:Payload, local_file:Path) -> None:
     self.payload = payload
-    self.local_file = local_file
+    self.local_file = str(local_file)
 
   def open(self):
     self.capture = cv2.VideoCapture(self.local_file)
-    self.capture.set(cv2.CAP_PROP_POS_MSEC, int(self.payload.start_sec * MILLISEC_PER_SEC))
+    print('VideoCapture(%s) isOpen=%s' % (self.local_file, self.capture.isOpened()))
+    
+    #self.capture.open()
+    #self.capture.set(cv2.CAP_PROP_POS_MSEC, int(self.payload.start_sec * MILLISEC_PER_SEC))
 
   def close(self):
     if self.capture is None:
@@ -51,11 +54,16 @@ class SkeletonExtractor:
 
   def frames(self, step_size_sec=0.5):
     results = []
-    for offset in range(self.payload.start_sec, self.payload.end_sec, step_size_sec):
-      _, frame = self.capture.set(cv2.CAP_PROP_POS_MSEC, int(offset * MILLISEC_PER_SEC))
+    offset = self.payload.start_sec
+    while offset < self.payload.end_sec:
+      self.capture.set(cv2.CAP_PROP_POS_MSEC, int(offset * MILLISEC_PER_SEC))
+      offset += step_size_sec
+
+      _, frame = self.capture.read()
       if frame == None:
-        break
+        continue
       results.append(frame)
+      
     return results
 
   def process_frames(self):
