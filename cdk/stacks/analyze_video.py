@@ -56,8 +56,8 @@ class OpenPoseConstruct(Construct, IQueuedTask):
 
     task_definition= ecs.FargateTaskDefinition(
       self,'Definition',
-      cpu=256,
-      memory_limit_mib=512,
+      cpu=4096,
+      memory_limit_mib=8 * 1024,
       runtime_platform= ecs.RuntimePlatform(
         cpu_architecture= ecs.CpuArchitecture.X86_64,
         operating_system_family= ecs.OperatingSystemFamily.LINUX),
@@ -113,7 +113,7 @@ class OpenPoseConstruct(Construct, IQueuedTask):
       platform_version= ecs.FargatePlatformVersion.LATEST,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       cluster = infra.compute.fargate_cluster,
-      desired_count=0,
+      desired_count=1,
       capacity_provider_strategies=[
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE_SPOT', weight=2),
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE', weight=1)

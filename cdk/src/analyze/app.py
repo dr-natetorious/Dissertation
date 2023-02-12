@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from time import sleep
 from signal import signal, SIGTERM
 from config import Config
@@ -39,7 +40,7 @@ def main_loop():
         QueueUrl=Config.TASK_QUEUE_URL,
         AttributeNames=['All'],
         MaxNumberOfMessages=1,
-        VisibilityTimeout= FIFTEEN_SEC, #FIFTEEN_MIN,
+        VisibilityTimeout= FIFTEEN_MIN,
         WaitTimeSeconds=FIFTEEN_SEC)
 
       if not 'Messages' in response:
