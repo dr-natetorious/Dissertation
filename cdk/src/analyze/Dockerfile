@@ -23,7 +23,7 @@
 # WORKDIR /openpose/build
 # RUN cmake -DBUILD_PYTHON=ON .. && make -j `nproc`
 
-FROM cwaffles/openpose
+FROM cwaffles/openpose as base
 
 #setup pyopenpose
 WORKDIR /openpose/build/python/openpose
@@ -40,5 +40,24 @@ ENV LD_LIBRARY_PATH=/openpose/build/python/openpose:${LD_LIBRARY_PATH}
 WORKDIR /openpose/models
 RUN  ./getModels.sh
 
-WORKDIR /openpose
+WORKDIR /usr/local/bin/analyze
+COPY requirements.txt .
+RUN pip3 install setuptools
+RUN pip3 install -r requirements.txt
 
+######################################################
+# DEBUG Layer
+######################################################
+FROM base as debug
+
+EXPOSE 3000
+WORKDIR /usr/local/bin/analyze
+RUN pip3 install debugpy
+
+# ######################################################
+# # Prod Layer
+# ######################################################
+
+# WORKDIR /usr/local/bin/analyze
+# COPY 
+# RUN pip3 install -r requirements.txt

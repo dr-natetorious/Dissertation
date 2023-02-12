@@ -41,6 +41,7 @@ class OpenPoseConstruct(Construct, IQueuedTask):
       
 
     status_table = ddb.Table(self,'StatusTable',
+      table_name='openpose-status',
       billing_mode=ddb.BillingMode.PAY_PER_REQUEST,
       point_in_time_recovery=True,
       table_class= ddb.TableClass.STANDARD,
