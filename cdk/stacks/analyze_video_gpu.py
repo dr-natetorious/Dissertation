@@ -67,7 +67,7 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
     )
 
     task_definition.add_container('OpenPoseGpu',
-      memory_limit_mib=3*1024,
+      memory_limit_mib=10* 1024,
       gpu_count=1,
       image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','analyze')),
       container_name='openpose-analyzer',
@@ -82,7 +82,7 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
         log_group= log_group,
         stream_prefix='analyzer'
       ),
-      essential=False,
+      essential=True,
       environment={
         'AWS_REGION': cdk.Aws.REGION,
         'TASK_QUEUE_URL': self.task_queue.queue_url,
@@ -131,7 +131,7 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
       task_definition= task_definition,
       assign_public_ip=False,
       cluster= cluster,
-      desired_count=1,
+      desired_count=5,
       # placement_constraints=[
       #   ecs.PlacementConstraint.member_of("attribute:ec2.instance-type==g4dn.xlarge")
       # ],
@@ -162,7 +162,7 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
         instance_type= ec2.InstanceType.of(ec2.InstanceClass.G4DN, instance_size=ec2.InstanceSize.XLARGE),
         machine_image= ecs.EcsOptimizedImage.amazon_linux2(hardware_type= ecs.AmiHardwareType.GPU)),
       allow_all_outbound=True,
-      max_capacity=1,
+      desired_capacity=10,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
     )
 
