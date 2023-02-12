@@ -129,6 +129,6 @@ class VideoProcessorConstruct(Construct):
   def __init__(self, scope:Construct, id:str, infra:IBaseInfrastructure,**kwargs)->None:
     super().__init__(scope,id,**kwargs)
     
-    self.open_pose = OpenPoseConstruct(self,'OpenPose',infra=infra)
+    #self.open_pose = OpenPoseConstruct(self,'OpenPose',infra=infra)
     self.open_pose_gpu = OpenPoseGpuConstruct(self,'OpenPoseGpu', infra=infra)
     return

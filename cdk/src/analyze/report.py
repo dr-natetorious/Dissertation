@@ -3,6 +3,7 @@ from io import BytesIO
 from config import Config
 from aws import AWS
 from payload import Payload
+from json import dumps
 from aws_xray_sdk.core import xray_recorder
 
 class Report:
@@ -25,22 +26,29 @@ class Report:
 
   def add_frame_node(self, datum, offset):
     frame = dict()
-    bodies = datum.poseKeypoints
-    frame["PeopleCount"] = len(bodies)
+    self.document['Frames'].append(frame)
+    
+
     frame["Offset"] = offset
     frame["Location"] = self.upload_frame_image(datum)
-    frame["Bodies"] = list()    
+    frame["Bodies"] = list()
 
-    for ix in range(0,len(bodies)):
-      frame["Bodies"].append(bodies[ix].tolist())
-
-    self.document['Frames'].append(frame)
+    try:
+      bodies = datum.poseKeypoints
+      frame["PeopleCount"] = len(bodies)    
+      for ix in range(0,len(bodies)):
+        frame["Bodies"].append(bodies[ix].tolist())
+    except Exception as error:
+      frame['Error'] = str(error)
+      print(str(error))
+    
     return frame
 
   @xray_recorder.capture('save')
   def save(self)->None:
     AWS.s3.put_object(
       Bucket=Config.DATA_BUCKET,
+      Body = dumps(self.document,indent=2),
       Key='report/%s/%s.json' %(
         self.payload.label,
         self.payload.video_id))
@@ -59,7 +67,7 @@ class Report:
       object_key = 'frames/%s/%s/%d.jpg' %(
         self.payload.video_id,
         label,
-        len(self.document['Frames']))
+        len(self.document['Frames']) -1)
 
       locations[label] = object_key
 

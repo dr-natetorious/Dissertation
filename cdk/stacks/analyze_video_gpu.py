@@ -43,12 +43,13 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
       dead_letter_queue=sqs.DeadLetterQueue(
         max_receive_count=1,
         queue= sqs.Queue(self,'DLQ',
+          queue_name='openpose-task_gpu_dlq',
           retention_period=cdk.Duration.days(14))
         )
       )
       
     status_table = ddb.Table(self,'StatusTable',
-      table_name='openpose-status_gpu',
+      table_name='openpose-status-table_gpu',
       billing_mode=ddb.BillingMode.PAY_PER_REQUEST,
       point_in_time_recovery=True,
       table_class= ddb.TableClass.STANDARD,
@@ -62,12 +63,11 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
 
     task_definition= ecs.Ec2TaskDefinition(
       self,'Definition',
-      family= 'LINUX',
       network_mode= ecs.NetworkMode.AWS_VPC
     )
 
     task_definition.add_container('OpenPoseGpu',
-      memory_limit_mib=10* 1024,
+      memory_limit_mib=14* 1024,
       gpu_count=1,
       image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','analyze')),
       container_name='openpose-analyzer',
@@ -131,13 +131,14 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
       task_definition= task_definition,
       assign_public_ip=False,
       cluster= cluster,
-      desired_count=5,
+      desired_count=0,
       # placement_constraints=[
       #   ecs.PlacementConstraint.member_of("attribute:ec2.instance-type==g4dn.xlarge")
       # ],
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'))
 
-    scale_group = asg.AutoScalingGroup(self,'Asg',
+    # Setup Spot provider...
+    spot_scale_group = asg.AutoScalingGroup(self,'Asg',
       auto_scaling_group_name='asg-analyze-video-gpu',
       vpc= infra.network.vpc,
       launch_template= ec2.LaunchTemplate(self,'OpenPoseHostLaunchTemplate',
@@ -162,11 +163,11 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
         instance_type= ec2.InstanceType.of(ec2.InstanceClass.G4DN, instance_size=ec2.InstanceSize.XLARGE),
         machine_image= ecs.EcsOptimizedImage.amazon_linux2(hardware_type= ecs.AmiHardwareType.GPU)),
       allow_all_outbound=True,
-      desired_capacity=10,
+      desired_capacity=50,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
     )
 
-    scale_group.scale_on_metric('QueueDepth',
+    spot_scale_group.scale_on_metric('QueueDepth',
       metric = self.task_queue.metric_approximate_number_of_messages_visible(
         period= cdk.Duration.minutes(15),
       ),
@@ -179,7 +180,39 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
 
     cluster.add_asg_capacity_provider(
       provider = ecs.AsgCapacityProvider(self,'AsgProvider',
-        auto_scaling_group= scale_group,
+        auto_scaling_group= spot_scale_group,
+        enable_managed_scaling=True))
+
+    ondemand_scale_group = asg.AutoScalingGroup(self,'AsgOneDemand',
+      auto_scaling_group_name='asg-openpose_gpu_ondemand',
+      vpc= infra.network.vpc,
+      launch_template= ec2.LaunchTemplate(self,'OpenPoseHostOnDemand',
+        detailed_monitoring=True,
+        launch_template_name='openpose_gpu_ondemand',
+        security_group= infra.network.open_security_group,
+        key_name='us-east-2.dissertation.natetorio.us',
+        user_data=ec2.UserData.for_linux(shebang=create_user_data()),
+        role= iam.Role(self,'AsgOnDemandRole',
+          assumed_by=iam.ServicePrincipal(service='ec2'),
+          managed_policies=[
+            iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSQSFullAccess'),
+            iam.ManagedPolicy.from_aws_managed_policy_name('AWSXrayWriteOnlyAccess'),
+            iam.ManagedPolicy.from_aws_managed_policy_name('AmazonS3FullAccess'),
+            iam.ManagedPolicy.from_aws_managed_policy_name('AmazonDynamoDBFullAccess'),
+            iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AmazonEC2RoleforSSM'),
+        ]),
+        instance_type= ec2.InstanceType.of(ec2.InstanceClass.G4DN, instance_size=ec2.InstanceSize.XLARGE),
+        machine_image= ecs.EcsOptimizedImage.amazon_linux2(hardware_type= ecs.AmiHardwareType.GPU)),
+      allow_all_outbound=True,
+      desired_capacity=50,
+      min_capacity=0,
+      max_capacity=10,
+      vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
+    )
+
+    cluster.add_asg_capacity_provider(
+      provider = ecs.AsgCapacityProvider(self,'OnDemandAsgProvider',
+        auto_scaling_group= ondemand_scale_group,
         enable_managed_scaling=True))
 
     self.task_queue.grant_consume_messages(task_definition.task_role)
