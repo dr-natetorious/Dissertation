@@ -1,5 +1,6 @@
 import builtins
 from stacks.interfaces import IBaseInfrastructure, IDataCollection, IQueuedTask
+from stacks.analyze_video_gpu import OpenPoseGpuConstruct
 from os import path
 import aws_cdk as cdk
 from constructs import Construct
@@ -129,4 +130,5 @@ class VideoProcessorConstruct(Construct):
     super().__init__(scope,id,**kwargs)
     
     self.open_pose = OpenPoseConstruct(self,'OpenPose',infra=infra)
+    self.open_pose_gpu = OpenPoseGpuConstruct(self,'OpenPoseGpu', infra=infra)
     return

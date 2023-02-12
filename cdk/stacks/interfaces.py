@@ -34,6 +34,10 @@ class IBaseInfrastructure:
     def storage(self)->IDataStorage:
         raise NotImplementedError()
 
+    @property
+    def open_security_group(self)->ec2.ISecurityGroup:
+        raise NotImplementedError()
+
 class IQueuedTask:
     @property
     def task_queue(self)->sqs.IQueue:
