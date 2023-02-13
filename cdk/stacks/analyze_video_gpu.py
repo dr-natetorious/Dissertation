@@ -206,7 +206,7 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
       allow_all_outbound=True,
       desired_capacity=50,
       min_capacity=0,
-      max_capacity=10,
+      max_capacity=100,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
     )
 
