@@ -12,8 +12,8 @@ MILLISEC_PER_SEC = 1000
 def create_params()->dict:
   params = {
     "model_folder": Config.MODEL_FOLDER,
-    "face": False,
-    "hand": False
+    "face": True,
+    "hand": True
   }
   return params
 
