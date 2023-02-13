@@ -45,7 +45,7 @@ class MovementTracker:
         },
         'Actions': [{
           'PersonId': x,
-          'Action': people[x],
+          'Action': people[x].tolist(),
           'Metadata': metadata[x]
           } 
           for x in range(0, len(people))
@@ -71,7 +71,7 @@ class MovementTracker:
     return bodies
   
   def total_frames(self):
-    return len(self.report['Frames'])
+    return len(self.report.frames)
 
   @staticmethod
   def closest_match(body, choices):

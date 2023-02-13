@@ -6,7 +6,7 @@ from tracer import MovementTracker
 patch_all()
 
 @xray_recorder.capture('lambda_function')
-def lambda_function(event, _)->dict:
+def lambda_function(event, _=None)->dict:
   invocation_id = event['invocationId']
   results = []
   for task in event['tasks']:
@@ -33,7 +33,7 @@ def lambda_function(event, _)->dict:
 
 
 if __name__ == '__main__':
-  xray_recorder.begin_segment()
+  xray_recorder.begin_segment('Main')
   lambda_function({
     "invocationSchemaVersion": "1.0",
     "invocationId": "YXNkbGZqYWRmaiBhc2RmdW9hZHNmZGpmaGFzbGtkaGZza2RmaAo",

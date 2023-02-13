@@ -1,4 +1,5 @@
 import boto3
+from io import BytesIO
 from aws_xray_sdk.core import xray_recorder
 from frame import Frame
 from PIL import Image
@@ -22,7 +23,10 @@ class Report:
 
     location = [f.location for f in self.frames if not f.location is None][0]
     request = s3.get_object(Bucket = self.bucket, Key=location.input_frame_uri)
-    self.image = Image.fromarray(request['Body'].read())
+    bytes = BytesIO(request['Body'].read())
+    bytes.seek(0)
+
+    self.image = Image.open(bytes)
 
   @property
   def image_size(self)->Tuple[int,int]:

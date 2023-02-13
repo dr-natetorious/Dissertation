@@ -1,5 +1,4 @@
 from typing import List
-import numpy as np
 
 class BodyPart:
   def __init__(self, position) -> None:
