@@ -3,8 +3,8 @@ from os import path, mkdir
 from json import loads, dumps
 
 GIT_ROOT = path.join(path.dirname(__file__),'..','..','..','..')
-DATA_ROOT = path.join(GIT_ROOT,'kinetics','kinetics700_2020')
-BUCKET_NAME = 'data.dissertation.natetorio.us'
+DATA_ROOT = path.join(GIT_ROOT,'kinetics','data','kinetics700_2020')
+BUCKET_NAME = 'manifest.us-east-2.dissertation.natetorio.us'
 REGION_NAME = 'us-east-2'
 MANIFEST_ROOT = path.join(path.dirname(__file__),'manifest')
 if not path.exists(MANIFEST_ROOT):
@@ -18,9 +18,9 @@ def get_json_file(name:str)->dict:
     return loads(f.read())
 
 def save_manifest(name:str, videos:list)->None:
-  local_file = path.join(MANIFEST_ROOT, '%s.json' % name.replace(" ","_"))
+  local_file = path.join(MANIFEST_ROOT, '%s.csv' % name.replace(" ","_"))
 
-  manifest = map(lambda vid: '%s,report/%s/%s.json' % (
+  manifest = map(lambda vid: '"%s","report/%s/%s.csv"' % (
     BUCKET_NAME,
     name,
     vid
@@ -31,7 +31,7 @@ def save_manifest(name:str, videos:list)->None:
     f.write(contents)
 
 def upload_manifest(name:str, videos:list)->None:
-  object_key = 'manifests/%s.json' % name.replace(" ","_")
+  object_key = 'manifest/%s.csv' % name.replace(" ","_")
 
   s3.put_object(
     Bucket=BUCKET_NAME,

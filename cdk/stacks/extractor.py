@@ -25,11 +25,15 @@ class ManifestMonitor(Construct):
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure, handler:lambda_.IFunction) -> None:
     super().__init__(scope, id)
 
+    self.bucket = s3.Bucket(self,'Bucket',
+      bucket_name='manifest.us-east-2.dissertation.natetorio.us')
+
     self.batch_role = iam.Role(self,'BatchRole',
       role_name='Extract_BatchRole',
       assumed_by=iam.ServicePrincipal('batchoperations.s3.amazonaws.com'))
     
     infra.storage.data_bucket.grant_read_write(self.batch_role)
+    self.bucket.grant_read(self.batch_role)
     handler.grant_invoke(self.batch_role)
 
     with open(path.join(ROOT_DIR,'src','start-manifest','index.py'), 'rt') as f:
@@ -50,19 +54,24 @@ class ManifestMonitor(Construct):
       },
     )
     
-    forward_function.role.attach_inline_policy(iam.Policy(self,'Policy',
+    forward_function.role.attach_inline_policy(iam.Policy(self,'CreateJobPolicy',
       document=iam.PolicyDocument(
         statements=[
           iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=[
-              's3control:StartJob'
+              's3:CreateJob'
             ],
-            resources=['*'])
-        ])))
-
-    self.bucket = s3.Bucket(self,'Bucket',
-      bucket_name='manifest.us-east-2.dissertation.natetorio.us')
+            resources=['*']),
+          iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+              'iam:PassRole',
+              'iam:GetRole'
+            ],
+            resources=[self.batch_role.role_arn]),
+        ]
+      )))
 
     forward_function.add_event_source(les.S3EventSource(
       bucket=self.bucket,
@@ -73,14 +82,6 @@ class ManifestMonitor(Construct):
             suffix=".csv")
       ]
     ))
-
-    # infra.storage.data_bucket.add_event_notification(
-    #   event= s3.EventType.OBJECT_CREATED,
-    #   dest= s3n.LambdaDestination(forward_function),
-    #   s3.NotificationKeyFilter(
-    #     prefix="manifest",
-    #     suffix=".csv"
-    #   ))
 
 class SkeletalStream(Construct):
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure) -> None:

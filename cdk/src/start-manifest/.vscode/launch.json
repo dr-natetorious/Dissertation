@@ -1,0 +1,18 @@
+{
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "index.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "ACCOUNT_ID": "995765563608",
+                "BATCH_ROLE_ARN": "arn:aws:iam::995765563608:role/Extract_BatchRole",
+                "FUNCTION_ARN": "arn:aws:lambda:us-east-2:995765563608:function:MovementExtractor_S3Batch",
+                "REPORT_BUCKET_ARN": "arn:aws:s3:::data.dissertation.natetorio.us"
+            }
+        }
+    ]
+}
