@@ -64,6 +64,9 @@ class MovementTracker:
       return results
 
   def norm_bodies(self, frame_id:int):
+    if frame_id >= self.total_frames():
+       return None
+    
     bodies = [
       np.array(MovementTracker.drop_low_conf(b))* (1,1,0) / (self.image.size[0], self.image.size[1], 1) 
       for b in self.report.json['Frames'][frame_id]['Bodies']
@@ -93,9 +96,12 @@ class MovementTracker:
   def track_person(self, frame_id, body):
     sequence = [body]
     if frame_id == self.total_frames():
-        return None
+        return sequence
     
     choices = self.norm_bodies(frame_id+1)
+    if choices is None:
+       return sequence
+    
     best = MovementTracker.closest_match(body, choices)
     if best is None:
         return sequence

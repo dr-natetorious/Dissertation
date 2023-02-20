@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 from report import Report
 from aws_xray_sdk.core import xray_recorder, patch_all
 from tracer import MovementTracker
@@ -43,7 +42,7 @@ if __name__ == '__main__':
     "tasks": [
         {
             "taskId": "dGFza2lkZ29lc2hlcmUK",
-            "s3Key": "report/climbing a rope/U6rFyjVdg0k.json",
+            "s3Key": "report/applauding/EFHxulDZr3s.json",
             "s3VersionId": "1",
             "s3BucketArn": "arn:aws:s3:::data.dissertation.natetorio.us"
         }

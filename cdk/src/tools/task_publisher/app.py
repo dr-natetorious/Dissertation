@@ -7,7 +7,7 @@ Initialize constants
 '''
 REGION_NAME = 'us-east-2'
 SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/995765563608/Kinetic-DataCollectionYouTubeTaskQueueE7A8C80C-UlOf6cxrDsrs'
-GIT_ROOT = path.join(path.dirname(__file__),'..','..','..')
+GIT_ROOT = path.join(path.dirname(__file__),'..','..','..','..')
 DATA_ROOT = path.join(GIT_ROOT,'kinetics','data','kinetics700_2020')
 MAX_SQS_BATCH_SIZE = 10
 
@@ -59,5 +59,4 @@ def batch_send_dataset(name:str)->None:
 
 
 if __name__ == "__main__":
-  
   batch_send_dataset('train')

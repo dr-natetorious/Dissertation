@@ -69,7 +69,7 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
     task_definition.add_container('OpenPoseGpu',
       memory_limit_mib=14* 1024,
       gpu_count=1,
-      image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','analyze')),
+      image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','openposer')),
       container_name='openpose-analyzer',
       port_mappings=[
         ecs.PortMapping(

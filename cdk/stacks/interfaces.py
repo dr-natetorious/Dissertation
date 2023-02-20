@@ -20,6 +20,10 @@ class IDataStorage:
     @property
     def data_bucket(self)->s3.IBucket:
         raise NotImplementedError()
+    
+    @property
+    def movement_bucket(self)->s3.IBucket:
+        raise NotImplementedError()
 
 class IBaseInfrastructure:
     @property

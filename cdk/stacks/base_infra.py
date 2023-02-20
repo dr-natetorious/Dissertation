@@ -143,6 +143,10 @@ class DataStorageConstruct(Construct):
   def inventory_bucket(self)->s3.IBucket:
     return self.__inventory_bucket
 
+  @property
+  def athena_bucket(self)->s3.IBucket:
+    return self.__athena_bucket
+
   def __init__(self, scope: Construct, id: builtins.str) -> None:
     super().__init__(scope, id)
 
@@ -151,6 +155,9 @@ class DataStorageConstruct(Construct):
 
     self.__inventory_bucket = s3.Bucket.from_bucket_name(self,'InventoryBucket', 
       bucket_name='inventory.us-east-2.dissertation.natetorio.us')
+
+    self.movement_bucket = s3.Bucket(self,'Bucket',
+      bucket_name='movement.us-east-2.dissertation.natetorio.us')    
 
 class BaseInfrastructureConstruct(Construct, IBaseInfrastructure):
   
