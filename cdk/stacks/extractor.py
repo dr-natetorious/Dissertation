@@ -7,6 +7,8 @@ from constructs import Construct
 from aws_cdk import(
     aws_ec2 as ec2,
     aws_s3 as s3,
+    aws_s3_notifications as s3n,
+    aws_lambda_event_sources as les,
     aws_iam as iam,
     aws_sqs as sqs,
     aws_ecs as ecs,
@@ -18,6 +20,67 @@ from aws_cdk import(
 )
 
 ROOT_DIR = path.join(path.dirname(__file__),'..')
+
+class ManifestMonitor(Construct):
+  def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure, handler:lambda_.IFunction) -> None:
+    super().__init__(scope, id)
+
+    self.batch_role = iam.Role(self,'BatchRole',
+      role_name='Extract_BatchRole',
+      assumed_by=iam.ServicePrincipal('batchoperations.s3.amazonaws.com'))
+    
+    infra.storage.data_bucket.grant_read_write(self.batch_role)
+    handler.grant_invoke(self.batch_role)
+
+    with open(path.join(ROOT_DIR,'src','start-manifest','index.py'), 'rt') as f:
+      code = lambda_.Code.from_inline(f.read())
+
+    forward_function = lambda_.Function(self,'Function',
+      code= code,
+      function_name='StartManifestFile',
+      handler='index.lambda_function',
+      runtime= lambda_.Runtime.PYTHON_3_8,
+      tracing= lambda_.Tracing.ACTIVE,
+      timeout= cdk.Duration.seconds(30),
+      environment={
+        'ACCOUNT_ID': cdk.Aws.ACCOUNT_ID,
+        'FUNCTION_ARN': handler.function_arn,
+        'REPORT_BUCKET_ARN': infra.storage.data_bucket.bucket_arn,
+        'BATCH_ROLE_ARN': self.batch_role.role_arn,
+      },
+    )
+    
+    forward_function.role.attach_inline_policy(iam.Policy(self,'Policy',
+      document=iam.PolicyDocument(
+        statements=[
+          iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+              's3control:StartJob'
+            ],
+            resources=['*'])
+        ])))
+
+    self.bucket = s3.Bucket(self,'Bucket',
+      bucket_name='manifest.us-east-2.dissertation.natetorio.us')
+
+    forward_function.add_event_source(les.S3EventSource(
+      bucket=self.bucket,
+      events=[s3.EventType.OBJECT_CREATED],
+      filters=[
+        s3.NotificationKeyFilter(
+            prefix="manifest",
+            suffix=".csv")
+      ]
+    ))
+
+    # infra.storage.data_bucket.add_event_notification(
+    #   event= s3.EventType.OBJECT_CREATED,
+    #   dest= s3n.LambdaDestination(forward_function),
+    #   s3.NotificationKeyFilter(
+    #     prefix="manifest",
+    #     suffix=".csv"
+    #   ))
 
 class SkeletalStream(Construct):
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure) -> None:
@@ -87,13 +150,11 @@ class MovementExtractorConstruct(Construct, IQueuedTask):
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       code = lambda_.DockerImageCode.from_image_asset(
         directory= path.join(ROOT_DIR,'src/extract')))
-      
-    self.batch_role = iam.Role(self,'BatchRole',
-      role_name='Extract_BatchRole',
-      assumed_by=iam.ServicePrincipal('batchoperations.s3.amazonaws.com'))
-    
-    infra.storage.data_bucket.grant_read_write(self.batch_role)
-    self.function.grant_invoke(self.batch_role)
+
+    self.input_monitor = ManifestMonitor(self,'InputMonitor',
+      infra=infra,
+      handler=self.function)
+
     self.output_stream.metadata_stream.grant_write(self.function.role)
     infra.storage.data_bucket.grant_read_write(self.function.role)
     self.function.role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AWSXrayWriteOnlyAccess'))

@@ -37,7 +37,7 @@ def upload_manifest(name:str, videos:list)->None:
     Bucket=BUCKET_NAME,
     Key=object_key,
     Body='\n'.join([
-      '%s,report/%s/%s.json' % (
+      '%s,report/%s/%s.csv' % (
         BUCKET_NAME,
         name,
         vid
