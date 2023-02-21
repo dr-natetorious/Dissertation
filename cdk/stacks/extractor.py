@@ -50,10 +50,10 @@ class ManifestMonitor(Construct):
         'ACCOUNT_ID': cdk.Aws.ACCOUNT_ID,
         'FUNCTION_ARN': handler.function_arn,
         'REPORT_BUCKET_ARN': infra.storage.data_bucket.bucket_arn,
-        'BATCH_ROLE_ARN': self.batch_role.role_arn,
+        'BATCH_ROLE_ARN': self.batch_role.role_arn,    
       },
     )
-    
+        
     forward_function.role.attach_inline_policy(iam.Policy(self,'CreateJobPolicy',
       document=iam.PolicyDocument(
         statements=[
@@ -126,11 +126,30 @@ class SkeletalStream(Construct):
     self.metadata_stream.grant_read(firehose_role)
     infra.storage.movement_bucket.grant_write(firehose_role)
 
+class MissingReportHandlerConstruct(Construct):
+  def __init__(self, scope: Construct, id: builtins.str) -> None:
+    super().__init__(scope, id)
+
+    self.fetch_queue = sqs.Queue(self,'FetchQueue',
+      queue_name='MovementExtractor-FetchQueue',
+      retention_period=cdk.Duration.days(14))
+
 class MovementExtractorConstruct(Construct, IQueuedTask):
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure) -> None:
     super().__init__(scope, id)
 
-    self.output_stream = SkeletalStream(self,'Output', infra=infra)    
+    self.output_stream = SkeletalStream(self,'Output', infra=infra)
+    self.missing_reports_handler = MissingReportHandlerConstruct(self,'MissingReports')
+
+    status_table = ddb.Table(self,'StatusTable',
+      table_name='MovementExtractor_status-table',
+      billing_mode=ddb.BillingMode.PAY_PER_REQUEST,
+      point_in_time_recovery=True,
+      table_class= ddb.TableClass.STANDARD,
+      partition_key= ddb.Attribute(name='VideoId',type=ddb.AttributeType.STRING),
+      sort_key= ddb.Attribute(name='SortKey', type=ddb.AttributeType.STRING),
+      time_to_live_attribute='Expiration')
+        
     self.function = lambda_.DockerImageFunction(self,'Function',
       allow_all_outbound=True,
       architecture= lambda_.Architecture.X86_64,
@@ -138,9 +157,10 @@ class MovementExtractorConstruct(Construct, IQueuedTask):
         queue_name='MovementExtractor_Function_dlq',
         retention_period= cdk.Duration.days(14)),
       environment={
-        #'AWS_REGION': cdk.Aws.REGION,
+        'FETCH_QUEUE': self.missing_reports_handler.fetch_queue.queue_url,
         'METADATA_STREAM': self.output_stream.metadata_stream.stream_name,
-        'DATA_BUCKET': infra.storage.data_bucket.bucket_name
+        'DATA_BUCKET': infra.storage.data_bucket.bucket_name,
+        'STATUS_TABLE': status_table.table_name,
       },
       function_name='MovementExtractor_S3Batch',
       log_retention= logs.RetentionDays.TWO_WEEKS,
@@ -151,11 +171,14 @@ class MovementExtractorConstruct(Construct, IQueuedTask):
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       code = lambda_.DockerImageCode.from_image_asset(
         directory= path.join(ROOT_DIR,'src/extract')))
-
+    
     self.input_monitor = ManifestMonitor(self,'InputMonitor',
       infra=infra,
       handler=self.function)
 
+    self.missing_reports_handler.fetch_queue.grant_send_messages(self.function.role)
+    status_table.grant_read_write_data(self.function.role)
     self.output_stream.metadata_stream.grant_write(self.function.role)
     infra.storage.data_bucket.grant_read_write(self.function.role)
-    self.function.role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AWSXrayWriteOnlyAccess'))
+    self.function.role.add_managed_policy(
+      iam.ManagedPolicy.from_aws_managed_policy_name('AWSXrayWriteOnlyAccess'))

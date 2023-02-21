@@ -1,5 +1,5 @@
 import builtins
-from stacks.interfaces import IBaseInfrastructure, IDataCollection, IQueuedTask
+from stacks.interfaces import IBaseInfrastructure, IQueuedTask
 from os import path
 import aws_cdk as cdk
 from constructs import Construct
@@ -20,7 +20,7 @@ ROOT_DIR = path.join(path.dirname(__file__),'..')
 def create_user_data():
   return '\n'.join([
     "#!/bin/bash",
-    "echo ECS_ENABLE_GPU_SUPPORT=true >> /etc/ecs/ecs.config"
+    #"echo ECS_ENABLE_GPU_SUPPORT=true >> /etc/ecs/ecs.config"
   ])
 
 class OpenPoseGpuConstruct(Construct, IQueuedTask):

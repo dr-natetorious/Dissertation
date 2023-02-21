@@ -9,6 +9,8 @@ from config import Config
 
 s3 = boto3.client('s3', region_name=Config.REGION_NAME)
 
+class NoFramesException(Exception):
+  pass
 
 class Report:
   def __init__(self, bucket:str, object_key:str) -> None:
@@ -18,10 +20,19 @@ class Report:
 
   @xray_recorder.capture('Report::open')
   def open(self)->None:
-    request = s3.get_object(Bucket=self.bucket, Key=self.object_key)
+    print('GetObject(s3://%s/%s)' % (self.bucket,self.object_key))
+    try:
+      request = s3.get_object(Bucket=self.bucket, Key=self.object_key)
+    except:
+      request = s3.get_object(Bucket=self.bucket, Key=self.object_key.replace('+',' '))
+
     self.json = loads(request['Body'].read())
 
-    location = [f.location for f in self.frames if not f.location is None][0]
+    location = [f.location for f in self.frames if not f.location is None]
+    if len(location) == 0:
+      raise NoFramesException()
+    
+    location = location[0]
     request = s3.get_object(Bucket = self.bucket, Key=location.input_frame_uri)
     bytes = BytesIO(request['Body'].read())
     bytes.seek(0)
