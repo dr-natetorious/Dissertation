@@ -1,5 +1,6 @@
 import builtins
-from stacks.interfaces import IBaseInfrastructure, IDataCollection, IQueuedTask
+from stacks.interfaces import IBaseInfrastructure
+from shared.monitor_s3jobs import MonitorS3BatchJobConstruct
 from os import path
 import aws_cdk as cdk
 from constructs import Construct
@@ -18,7 +19,10 @@ ROOT_DIR = path.join(path.dirname(__file__),'..')
 class RekognitionConstruct(Construct):
 
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure) -> None:
-    super().__init__(scope, id)
+    super().__init__(scope, id)    
+
+    self.bucket = s3.Bucket(self,'Bucket',
+      bucket_name='rekognition.us-east-2.dissertation.natetorio.us')
 
     status_table = ddb.Table(self,'StatusTable',
       table_name='rekon-status-table',
@@ -48,6 +52,11 @@ class RekognitionConstruct(Construct):
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       code = lambda_.DockerImageCode.from_image_asset(
         directory= path.join(ROOT_DIR,'src/rekon')))
+
+    self.monitor = MonitorS3BatchJobConstruct(self,'Monitor',
+      infra=infra,
+      trigger_bucket= self.bucket,
+      handler = self.function)
 
     status_table.grant_read_write_data(self.function.role)
     infra.storage.data_bucket.grant_read_write(self.function.role)

@@ -11,7 +11,6 @@ from aws_cdk import(
     aws_lambda_event_sources as les,
     aws_iam as iam,
     aws_sqs as sqs,
-    aws_ecs as ecs,
     aws_logs as logs,
     aws_dynamodb as ddb,
     aws_lambda as lambda_,
@@ -78,8 +77,8 @@ class ManifestMonitor(Construct):
       events=[s3.EventType.OBJECT_CREATED],
       filters=[
         s3.NotificationKeyFilter(
-            prefix="manifest",
-            suffix=".csv")
+          prefix="manifest",
+          suffix=".csv")
       ]
     ))
 
