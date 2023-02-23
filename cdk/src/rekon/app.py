@@ -4,6 +4,7 @@ from config import Config
 from json import dumps
 from analyze import Analyzer
 from skeleton import SkeletonManifest
+from botocore.exceptions import ClientError
 from status import StatusTable, ActionStatus
 from botocore.exceptions import ClientError
 from aws_xray_sdk.core import xray_recorder, patch_all
