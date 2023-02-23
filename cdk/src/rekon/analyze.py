@@ -78,7 +78,8 @@ class Analyzer:
       )
       status_table.set_frame_status(
         self.manifest.video_id,
-        frame.source_uri
+        frame.source_uri,
+        ActionStatus.COMPLETE
       )
 
     return {

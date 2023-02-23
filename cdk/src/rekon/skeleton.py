@@ -34,10 +34,17 @@ class Report:
     self.bucket = bucket
     self.object_key = object_key
 
-    response = s3.get_object(
-      Bucket=self.bucket,
-      Key = self.object_key
-    )
+    try:
+      response = s3.get_object(
+        Bucket=self.bucket,
+        Key = self.object_key
+      )
+    except:
+      self.object_key = self.object_key.replace('+',' ')
+      response = s3.get_object(
+        Bucket=self.bucket,
+        Key = self.object_key
+      )
 
     self.object = loads(response['Body'].read())
 
@@ -74,7 +81,7 @@ class SkeletonManifest:
     self.object_key = object_key
     self.__report = None
 
-    response = s3.get_objet(
+    response = s3.get_object(
       Bucket=self.bucket,
       Key=self.object_key
     )
