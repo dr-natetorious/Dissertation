@@ -7,6 +7,7 @@ from aws_cdk import(
     aws_ec2 as ec2,
     aws_ecs as ecs,
     aws_s3 as s3,
+    aws_redshift as redshift,
 )
 
 class NetworkConstruct(Construct, INetworkConstruct):
@@ -157,7 +158,7 @@ class DataStorageConstruct(Construct):
       bucket_name='inventory.us-east-2.dissertation.natetorio.us')
 
     self.movement_bucket = s3.Bucket(self,'Bucket',
-      bucket_name='movement.us-east-2.dissertation.natetorio.us')    
+      bucket_name='movement.us-east-2.dissertation.natetorio.us')
 
 class BaseInfrastructureConstruct(Construct, IBaseInfrastructure):
   

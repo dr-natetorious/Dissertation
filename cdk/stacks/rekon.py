@@ -12,9 +12,55 @@ from aws_cdk import(
     aws_sqs as sqs,
     aws_lambda as lambda_,
     aws_dynamodb as ddb,
+    aws_kinesis as kinesis,
+    aws_redshiftserverless as redshift,
+    aws_kinesisfirehose as hose,
 )
 
 ROOT_DIR = path.join(path.dirname(__file__),'..')
+
+class RekognitionDeliveryStream(Construct):
+  def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure) -> None:
+    super().__init__(scope, id)
+
+    firehose_role = iam.Role(self,'FirehoseRole',
+      assumed_by= iam.ServicePrincipal('firehose'))
+
+    self.input_stream = kinesis.Stream(self,'Stream',
+      stream_name= 'rekognition-metadata',
+      retention_period= cdk.Duration.days(90),
+      shard_count=5)
+    
+    log_group = logs.LogGroup(self,'DeliveryLogs',
+      removal_policy= cdk.RemovalPolicy.DESTROY,
+      retention= logs.RetentionDays.FIVE_DAYS)
+        
+    self.firehose = hose.CfnDeliveryStream(self,'Firehose',
+      delivery_stream_name='rekognition-delivery',
+      kinesis_stream_source_configuration= hose.CfnDeliveryStream.KinesisStreamSourceConfigurationProperty(
+        kinesis_stream_arn= self.input_stream.stream_arn,
+        role_arn= firehose_role.role_arn
+      ),
+      extended_s3_destination_configuration= hose.CfnDeliveryStream.ExtendedS3DestinationConfigurationProperty(
+        compression_format= 'GZIP',
+        prefix='rekognition/delivery-stream/',
+        role_arn= firehose_role.role_arn,
+        error_output_prefix='error/rekognition/delivery-stream/',
+        cloud_watch_logging_options= hose.CfnDeliveryStream.CloudWatchLoggingOptionsProperty(
+          enabled=True,
+          log_group_name= log_group.log_group_name,
+          log_stream_name= 'RekognitionFirehose'
+        ),
+        bucket_arn= infra.storage.movement_bucket.bucket_arn,
+        buffering_hints= hose.CfnDeliveryStream.BufferingHintsProperty(
+          interval_in_seconds=900,
+          size_in_m_bs=128
+        )
+    ))
+
+    log_group.grant_write(firehose_role)
+    self.input_stream.grant_read(firehose_role)
+    infra.storage.movement_bucket.grant_write(firehose_role)
 
 class MonitorS3BatchJobConstruct(Construct):
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure,
@@ -94,6 +140,8 @@ class RekognitionConstruct(Construct):
       visibility_timeout=FUNCTION_TIMEOUT,
       retention_period=cdk.Duration.days(14))
 
+    self.delivery_stream = RekognitionDeliveryStream(self,'Demographics', infra=infra)
+
     status_table = ddb.Table(self,'StatusTable',
       table_name='rekon-status-table',
       billing_mode=ddb.BillingMode.PAY_PER_REQUEST,
@@ -115,6 +163,7 @@ class RekognitionConstruct(Construct):
         'DATA_BUCKET': infra.storage.data_bucket.bucket_name,
         'STATUS_TABLE': status_table.table_name,
         'QUEUE_URL': self.queue.queue_url,
+        'REPORT_STREAM': self.delivery_stream.input_stream.stream_name,
       },
       function_name='Rekognition_S3Batch',
       memory_size=256,
@@ -139,5 +188,6 @@ class RekognitionConstruct(Construct):
     infra.storage.data_bucket.grant_read_write(self.function.role)
     self.queue.grant_send_messages(self.function.role)
     self.queue.grant_consume_messages(self.function.role)
+    self.delivery_stream.input_stream.grant_write(self.function.role)
     self.function.role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AWSXrayWriteOnlyAccess'))
     self.function.role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AmazonRekognitionReadOnlyAccess'))

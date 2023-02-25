@@ -6,3 +6,4 @@ class Config:
   STATUS_TABLE = environ.get('STATUS_TABLE','rekon-status-table')
   MIN_CONFIDENCE = int(environ.get('MIN_CONFIDENCE', '70'))
   QUEUE_URL = environ.get('QUEUE_URL')
+  REPORT_STREAM = environ.get('REPORT_STREAM','rekognition-metadata')

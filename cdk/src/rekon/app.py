@@ -24,7 +24,7 @@ def s3_batch_event(event, _=None)->dict:
 
     manifest = SkeletonManifest(bucket_name,object_key)
 
-    status, lastModified = status_table.get_process_status(manifest.video_id)
+    # status, lastModified = status_table.get_process_status(manifest.video_id)
     # if status == ActionStatus.COMPLETE:
     #   results.append({
     #     'taskId': task_id,

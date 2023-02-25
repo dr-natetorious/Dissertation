@@ -5,9 +5,66 @@ from config import Config
 
 s3 = boto3.client('s3', region_name=Config.REGION_NAME)
 
+class IFrame:
+  @property
+  def offset(self)->float:
+    raise NotImplementedError()
+  
+  @property
+  def location(self)->dict:
+    raise NotImplementedError()
+  
+  @property
+  def source_uri(self)->str:
+    raise NotImplementedError()
+  
+  @property
+  def annotated_uri(self)->str:
+    raise NotImplementedError()
+  
+  @property
+  def has_error(self)->bool:
+    raise NotImplementedError()
+  
+  @property
+  def parent(self):
+    raise NotImplementedError()
+
+class IReport:
+  @property
+  def frame_bucket(self)->str:
+    raise NotImplementedError()
+
+  @property
+  def frames(self)->List[IFrame]:
+    raise NotImplementedError()
+  
+  @property
+  def key_frames(self)->List[IFrame]:
+    raise NotImplementedError()
+  
+  @property
+  def parent(self):
+    raise NotImplementedError()
+
+class ISkeletonManifest:
+  @property
+  def video_id(self)->str:
+    raise NotImplementedError()
+
+  @property
+  def report(self)->IReport:
+    raise NotImplementedError()
+
+
 class Frame:
-  def __init__(self, json:dict) -> None:
+  def __init__(self, parent:IReport, json:dict) -> None:
+    self.__parent = parent
     self.json = json
+
+  @property
+  def parent(self)->IReport:
+    return self.__parent
 
   @property
   def offset(self)->float:
@@ -30,7 +87,8 @@ class Frame:
     return 'Error' in self.json
 
 class Report:
-  def __init__(self, bucket:str, object_key:str) -> None:
+  def __init__(self, parent:ISkeletonManifest, bucket:str, object_key:str) -> None:
+    self.__parent = parent
     self.bucket = bucket
     self.object_key = object_key
 
@@ -49,12 +107,16 @@ class Report:
     self.object = loads(response['Body'].read())
 
   @property
+  def parent(self)->ISkeletonManifest:
+    return self.__parent
+
+  @property
   def frame_bucket(self)->str:
     return self.object['Bucket']
 
   @property
   def frames(self)->List[Frame]:
-    return [Frame(x) for x in self.object['Frames']]
+    return [Frame(self,x) for x in self.object['Frames']]
   
   @property
   def key_frames(self)->List[Frame]:
@@ -63,7 +125,7 @@ class Report:
       for x in self.frames 
       if len(x.json['Bodies'])>0 and not x.has_error]
 
-class SkeletonManifest:
+class SkeletonManifest(ISkeletonManifest):
   
   @property
   def video_id(self)->str:
@@ -73,7 +135,7 @@ class SkeletonManifest:
   def report(self)->Report:
     if self.__report is None:
       report = self.object['Report']
-      self.__report= Report(report['Bucket'], report['Key'])
+      self.__report= Report(self, report['Bucket'], report['Key'])
     return self.__report
   
   def __init__(self, bucket:str, object_key:str) -> None:

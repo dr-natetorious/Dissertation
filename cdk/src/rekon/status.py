@@ -97,3 +97,40 @@ class StatusTable:
         ':actionStatus': {'S': status.value},
         ':lastUpdated': {'N': str(mktime(datetime.utcnow().timetuple())) }
       })
+
+  @xray_recorder.capture('get_process_frame_status')
+  def get_frame_face_status(self,video_id:str, frame_uri:str)->Tuple[ActionStatus, datetime]:
+    response = ddb_client.get_item(
+      TableName=Config.STATUS_TABLE,
+      Key={
+        'VideoId': {'S': video_id},
+        'SortKey': {'S': 'Rekognition::Process::Face::%s' %frame_uri }
+      },
+      AttributesToGet=[
+        'actionStatus','lastUpdated'
+      ])
+
+    if not 'Item' in response:
+      xray_recorder.put_annotation('actionStatus','None')
+      return (ActionStatus.NONE, None)
+
+    status = response['Item']['actionStatus']['S']
+    lastUpdated = response['Item']['lastUpdated']['N']
+    
+    xray_recorder.put_annotation('actionStatus',status)
+    xray_recorder.put_annotation('actionLastUpdated',lastUpdated)
+    return (ActionStatus(status),datetime.fromtimestamp(float(lastUpdated)))
+
+  @xray_recorder.capture('set_process_status')
+  def set_frame_face_status(self, video_id:str, frame_uri:str, status:ActionStatus)->None:
+    response = ddb_client.update_item(
+      TableName=Config.STATUS_TABLE,
+      Key={
+        'VideoId': {'S': video_id},
+        'SortKey': {'S': 'Rekognition::Process::Face::%s' %frame_uri }
+      },
+      UpdateExpression="SET actionStatus=:actionStatus, lastUpdated=:lastUpdated",
+      ExpressionAttributeValues={
+        ':actionStatus': {'S': status.value},
+        ':lastUpdated': {'N': str(mktime(datetime.utcnow().timetuple())) }
+      })
