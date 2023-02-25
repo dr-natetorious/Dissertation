@@ -25,25 +25,20 @@ def save_manifest(name:str, videos:list)->None:
     DATA_BUCKET_NAME,
     vid
     ), videos)
+  
+  manifest = list(manifest)
 
   with open(local_file,'wt') as f:
     contents = '\n'.join(manifest)
     f.write(contents)
 
-def upload_manifest(name:str, videos:list)->None:
-  object_key = 'manifest/%s.csv' % name.replace(" ","_")
+  return manifest
 
-  s3.put_object(
-    Bucket=MANIFEST_BUCKET_NAME,
-    Key=object_key,
-    Body='\n'.join([
-      '%s,extract/%s/%s.csv' % (
-        MANIFEST_BUCKET_NAME,
-        name,
-        vid
-      )
-    ] for vid in videos)
-  )
+def save_full_run(videos:list)->None:
+  local_file = path.join(MANIFEST_ROOT, 'full_run.csv')
+  with open(local_file,'wt') as f:
+    contents = '\n'.join(videos)
+    f.write(contents)
 
 def generate_manifests(name:str)->None:
   dataset = get_json_file(name)
@@ -56,8 +51,11 @@ def generate_manifests(name:str)->None:
       labels[label] = list()
     labels[label].append(video_id)
 
+  all_entries = []
   for label in labels.keys():
-    save_manifest(label, labels[label])
+    all_entries.extend(save_manifest(label, labels[label]))
+
+  save_full_run(all_entries)
 
 if __name__ == '__main__':
   generate_manifests('train')

@@ -79,6 +79,8 @@ class MonitorS3BatchJobConstruct(Construct):
       ]
     ))
 
+FUNCTION_TIMEOUT=cdk.Duration.minutes(5)
+
 class RekognitionConstruct(Construct):
 
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure) -> None:
@@ -86,6 +88,11 @@ class RekognitionConstruct(Construct):
 
     self.bucket = s3.Bucket(self,'Bucket',
       bucket_name='rekognition.us-east-2.dissertation.natetorio.us')
+
+    self.queue = sqs.Queue(self,'Queue',
+      queue_name='rekon-task-queue',
+      visibility_timeout=FUNCTION_TIMEOUT,
+      retention_period=cdk.Duration.days(14))
 
     status_table = ddb.Table(self,'StatusTable',
       table_name='rekon-status-table',
@@ -103,14 +110,16 @@ class RekognitionConstruct(Construct):
       dead_letter_queue= sqs.Queue(self,'DLQ',
         queue_name='Rekognition_S3Batch_dlq',
         retention_period= cdk.Duration.days(14)),
+      #reserved_concurrent_executions= 50,
       environment={
         'DATA_BUCKET': infra.storage.data_bucket.bucket_name,
         'STATUS_TABLE': status_table.table_name,
+        'QUEUE_URL': self.queue.queue_url,
       },
       function_name='Rekognition_S3Batch',
       memory_size=256,
       tracing=lambda_.Tracing.ACTIVE,
-      timeout=cdk.Duration.minutes(5),
+      timeout=FUNCTION_TIMEOUT,
       vpc= infra.network.vpc,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       code = lambda_.DockerImageCode.from_image_asset(
@@ -121,6 +130,14 @@ class RekognitionConstruct(Construct):
       trigger_bucket= self.bucket,
       handler = self.function)
 
+    self.function.add_event_source(les.SqsEventSource(
+      queue=self.queue,
+      enabled=False,
+      batch_size=1))
+
     status_table.grant_read_write_data(self.function.role)
     infra.storage.data_bucket.grant_read_write(self.function.role)
+    self.queue.grant_send_messages(self.function.role)
+    self.queue.grant_consume_messages(self.function.role)
     self.function.role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AWSXrayWriteOnlyAccess'))
+    self.function.role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AmazonRekognitionReadOnlyAccess'))
