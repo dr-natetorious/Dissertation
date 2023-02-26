@@ -16,7 +16,11 @@ sqs_client = boto3.client('sqs', region_name=REGION_NAME)
 def get_json_file(name:str)->dict:
   file_name = path.join(DATA_ROOT,name+".json")
   with open(file_name,'rt') as f:
-    return loads(f.read())
+    json:dict = loads(f.read())
+    for key in json.keys():
+      if len(json[key]['annotations']['label']) == 0:
+        json[key]['annotations']['label'] = 'test'
+    return json
 
 def display_error_response(response):
   failed = response['Failed']
@@ -59,4 +63,4 @@ def batch_send_dataset(name:str)->None:
 
 
 if __name__ == "__main__":
-  batch_send_dataset('train')
+  batch_send_dataset('test')
