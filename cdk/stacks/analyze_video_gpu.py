@@ -16,6 +16,7 @@ from aws_cdk import(
 )
 
 ROOT_DIR = path.join(path.dirname(__file__),'..')
+OPEN_POSE_TASK_COUNT = 0
 
 def create_user_data():
   return '\n'.join([
@@ -130,7 +131,7 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
       task_definition= task_definition,
       assign_public_ip=False,
       cluster= cluster,
-      desired_count=0,
+      desired_count=OPEN_POSE_TASK_COUNT,
       # placement_constraints=[
       #   ecs.PlacementConstraint.member_of("attribute:ec2.instance-type==g4dn.xlarge")
       # ],
@@ -162,7 +163,7 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
         instance_type= ec2.InstanceType.of(ec2.InstanceClass.G4DN, instance_size=ec2.InstanceSize.XLARGE),
         machine_image= ecs.EcsOptimizedImage.amazon_linux2(hardware_type= ecs.AmiHardwareType.GPU)),
       allow_all_outbound=True,
-      desired_capacity=50,
+      desired_capacity=OPEN_POSE_TASK_COUNT,
       min_capacity=0,
       max_capacity=100,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),

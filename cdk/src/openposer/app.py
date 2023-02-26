@@ -39,15 +39,23 @@ def main_loop():
       response = AWS.sqs.receive_message(
         QueueUrl=Config.TASK_QUEUE_URL,
         AttributeNames=['All'],
-        MaxNumberOfMessages=1,
+        MaxNumberOfMessages=10,
         VisibilityTimeout= FIFTEEN_MIN,
         WaitTimeSeconds=FIFTEEN_SEC)
 
       if not 'Messages' in response:
         continue
-
+          
       for message in response['Messages']:
-        message_handler.process(message)
+        xray_recorder.begin_subsegment('NextMessage')
+        try:    
+          message_handler.process(message)
+        except Exception as error:
+          print(str(error))
+          continue
+        finally:
+          xray_recorder.end_subsegment()
+
     except Exception as error:
       print(str(error))
     finally:
