@@ -10,7 +10,7 @@ from aws_xray_sdk.core import xray_recorder, patch_all
 FIFTEEN_SEC = 15
 SIXTY_SEC = 60
 FIFTEEN_MIN = 15 * SIXTY_SEC
-MAX_WORKERS = 1
+MAX_WORKERS = 8
 
 pool = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 
@@ -59,5 +59,4 @@ if __name__ == '__main__':
   for _ in range(0, MAX_WORKERS):
     pool.submit(main_loop)
   
-  sleep(10)
   pool.shutdown(wait=True)

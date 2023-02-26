@@ -20,7 +20,7 @@ ROOT_DIR = path.join(path.dirname(__file__),'..')
 def create_user_data():
   return '\n'.join([
     "#!/bin/bash",
-    #"echo ECS_ENABLE_GPU_SUPPORT=true >> /etc/ecs/ecs.config"
+    "echo ECS_ENABLE_GPU_SUPPORT=true >> /etc/ecs/ecs.config"
   ])
 
 class OpenPoseGpuConstruct(Construct, IQueuedTask):
@@ -56,7 +56,6 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
       partition_key= ddb.Attribute(name='VideoId',type=ddb.AttributeType.STRING),
       sort_key= ddb.Attribute(name='SortKey', type=ddb.AttributeType.STRING),
       time_to_live_attribute='Expiration')
-
 
     log_group = logs.LogGroup(self,'LogGroup',
       retention= logs.RetentionDays.TWO_WEEKS)
@@ -163,7 +162,7 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
         instance_type= ec2.InstanceType.of(ec2.InstanceClass.G4DN, instance_size=ec2.InstanceSize.XLARGE),
         machine_image= ecs.EcsOptimizedImage.amazon_linux2(hardware_type= ecs.AmiHardwareType.GPU)),
       allow_all_outbound=True,
-      desired_capacity=0,
+      desired_capacity=50,
       min_capacity=0,
       max_capacity=100,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
