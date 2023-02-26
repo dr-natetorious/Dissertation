@@ -1,6 +1,6 @@
 from tempfile import gettempdir
 from pathlib import Path
-from json import loads
+from json import loads, dumps
 from config import Config
 from payload import Payload
 from aws import AWS
@@ -27,6 +27,13 @@ class MessageHandler:
     xray_recorder.current_segment().put_annotation('video_id', payload.video_id)
     xray_recorder.current_segment().put_annotation('status', str(status.value))
     
+    if payload.url.prefix is not None:
+      self.find_videos(payload)
+      AWS.sqs.delete_message(
+        QueueUrl=Config.TASK_QUEUE_URL,
+        ReceiptHandle=receipt_handle)
+      return
+
     if status == AnalyzeStatus.COMPLETE:
       AWS.sqs.delete_message(
         QueueUrl=Config.TASK_QUEUE_URL,
@@ -50,6 +57,29 @@ class MessageHandler:
 
     return
     
+  @xray_recorder.capture('find_videos')
+  def find_videos(self, payload:Payload)->None:
+    response = AWS.s3.list_objects_v2(
+      Bucket = payload.url.bucket,
+      Prefix= payload.url.prefix)
+    
+    response = AWS.sqs.send_message_batch(
+      QueueUrl=Config.TASK_QUEUE_URL,
+      Entries=[
+        {
+          'Id': payload.video_id,
+          'MessageBody': dumps({
+            'video_id': m['Key'],
+            'properties': {
+              's3uri':{
+                'bucket': payload.url.bucket,
+                'object_key': m['Key'],
+              },
+              'annotations': payload.json['properties']['annotations']
+            }
+          })
+        } for m in response['Contents'] if m['Key'].endswith('.mp4')
+      ])
 
   @xray_recorder.capture('download_file')
   def download_file(self, payload:Payload)->Path:

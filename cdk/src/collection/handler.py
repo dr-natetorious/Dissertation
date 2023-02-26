@@ -159,7 +159,10 @@ class MessageHandler:
     self.s3_client.put_object(
       Bucket=Config.DATA_BUCKET,
       Key='video/%s/get_info.json' % video_id,
-      Body=output)
+      Body=output,
+      Metadata={
+        'VideoId': video_id
+      })
 
     json = loads(output)
     return json
@@ -210,6 +213,7 @@ class MessageHandler:
 
     # Download the file
     self.__stream_to_s3(
+      video_id=video_id,
       definition=definition,
       url=url,
       remote_file=remote_file)
@@ -219,9 +223,8 @@ class MessageHandler:
     self.status_table.set_stream_status(video_id,remote_file, DownloadStatus.COMPLETE)
 
 
-
   @xray_recorder.capture('stream_to_s3')
-  def __stream_to_s3(self,definition, url, remote_file):  
+  def __stream_to_s3(self,video_id, definition, url, remote_file):  
       r = requests.get(url,stream=True)
       bytes = BytesIO()
       totalbits = 0
@@ -244,6 +247,6 @@ class MessageHandler:
         Key=remote_file,
         ContentType=definition['mimeType'],
         Metadata={
-          #"itag":str(definition['itag']),
+          'VideoId': video_id,
           "quality": definition['quality'] if 'quality' in definition else 'unknown'
         })

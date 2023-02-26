@@ -218,6 +218,7 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
         enable_managed_scaling=True))
 
     self.task_queue.grant_consume_messages(task_definition.task_role)
+    self.task_queue.grant_send_messages(task_definition.task_role)
     status_table.grant_read_write_data(task_definition.task_role)
     infra.storage.data_bucket.grant_read_write(task_definition.task_role)
     task_definition.task_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('CloudWatchLogsFullAccess'))

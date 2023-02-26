@@ -8,11 +8,16 @@ class S3Uri:
   @property
   def object_key(self)->str:
     return self.__object_key
+  
+  @property
+  def prefix(self)->str:
+    return self.__prefix
 
   def __init__(self, uri:dict) -> None:
     self.__raw = uri
     self.__bucket = uri['bucket']
-    self.__object_key = uri['object_key']
+    self.__object_key = uri['object_key'] if 'object_key' in uri else None
+    self.__prefix = uri['prefix'] if 'prefix' in uri else None
 
 class Payload:
   @property

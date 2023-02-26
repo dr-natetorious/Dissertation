@@ -4,24 +4,24 @@ from time import sleep
 from signal import signal, SIGTERM
 from config import Config
 from handler import MessageHandler
+from concurrent.futures import ThreadPoolExecutor
 from aws_xray_sdk.core import xray_recorder, patch_all
 
 FIFTEEN_MIN = 60*15
 FIFTEEN_SEC = 15
+MAX_WORKERS = 4
+MAX_MESSAGES= 10
 
 '''
 Configure the clients
 '''
 sqs_client = boto3.client('sqs', region_name=Config.REGION_NAME)
 message_handler = MessageHandler()
+pool = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 
 def shutdown(signnum, frame):
   print('Caught SIGTERM, exiting')
   exit(0)
-
-def friendly_sleep(secs)->None:
-  for _ in range(0,secs):
-    sleep(1)
 
 def configure_xray():
   xray_recorder.configure(
@@ -43,7 +43,7 @@ def main_loop():
       response = sqs_client.receive_message(
         QueueUrl=Config.TASK_QUEUE_URL,
         AttributeNames=['All'],
-        MaxNumberOfMessages=1,
+        MaxNumberOfMessages=MAX_MESSAGES,
         VisibilityTimeout= FIFTEEN_MIN,
         WaitTimeSeconds=FIFTEEN_SEC)
 
@@ -52,9 +52,10 @@ def main_loop():
     finally:
       xray_recorder.end_segment()
 
-    friendly_sleep(Config.LOOP_SLEEP_SEC)
-
 if __name__ == '__main__':
   configure_xray()
   signal(SIGTERM, shutdown)
-  main_loop()
+  for _ in range(0, MAX_WORKERS):
+    pool.submit(main_loop)
+
+  pool.shutdown(wait=True)

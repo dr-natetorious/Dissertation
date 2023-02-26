@@ -11,7 +11,6 @@ from aws_cdk import(
     aws_sqs as sqs,
     aws_ecs as ecs,
     aws_dynamodb as ddb,
-    aws_ecs_patterns as ecs_p,
 )
 
 ROOT_DIR = path.join(path.dirname(__file__),'..')
@@ -33,8 +32,9 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
       queue_name='youtube-download-tasks',
       retention_period=cdk.Duration.days(14),
       dead_letter_queue=sqs.DeadLetterQueue(
-        max_receive_count=1,
+        max_receive_count=2,
         queue= sqs.Queue(self,'DLQ',
+          queue_name='youtube-download-tasks_dlq',
           retention_period=cdk.Duration.days(14))
         )
       )
@@ -54,8 +54,8 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
 
     task_definition= ecs.FargateTaskDefinition(
       self,'Definition',
-      cpu=256,
-      memory_limit_mib=512,
+      cpu=2048,
+      memory_limit_mib=4096,
       runtime_platform= ecs.RuntimePlatform(
         cpu_architecture= ecs.CpuArchitecture.X86_64,
         operating_system_family= ecs.OperatingSystemFamily.LINUX),
@@ -111,7 +111,7 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
       platform_version= ecs.FargatePlatformVersion.LATEST,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       cluster = infra.compute.fargate_cluster,
-      desired_count=0,
+      desired_count=250,
       capacity_provider_strategies=[
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE_SPOT', weight=2),
         ecs.CapacityProviderStrategy(capacity_provider='FARGATE', weight=1)
@@ -121,7 +121,6 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
     status_table.grant_read_write_data(service.task_definition.task_role)
     infra.storage.data_bucket.grant_read_write(service.task_definition.task_role)
     task_definition.task_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AWSXrayWriteOnlyAccess'))
-    #task_definition.execution_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSQSFullAccess'))
 
 class DataCollectionConstruct(Construct):
   def __init__(self, scope:Construct, id:str, infra:IBaseInfrastructure,**kwargs)->None:

@@ -2,10 +2,9 @@ from os import environ
 
 class Config:
   REGION_NAME = environ.get('REGION_NAME', 'us-east-2')
-  TASK_QUEUE_URL = environ.get('TASK_QUEUE_URL','https://sqs.us-east-2.amazonaws.com/995765563608/openpose-tasks')
+  TASK_QUEUE_URL = environ.get('TASK_QUEUE_URL','https://sqs.us-east-2.amazonaws.com/995765563608/openpose-tasks_gpu')
   STATUS_TABLE = environ.get('STATUS_TABLE', 'openpose-status')
   DATA_BUCKET = environ.get('DATA_BUCKET', 'data.dissertation.natetorio.us')
-  LOOP_SLEEP_SEC = int(environ.get('LOOP_SLEEP_SEC', 0))
   MODEL_FOLDER = environ.get('MODEL_FOLDER', '/openpose/models')
 
   @staticmethod

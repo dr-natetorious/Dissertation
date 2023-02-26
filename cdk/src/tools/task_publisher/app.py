@@ -6,7 +6,7 @@ from json import loads, dumps
 Initialize constants
 '''
 REGION_NAME = 'us-east-2'
-SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/995765563608/Kinetic-DataCollectionYouTubeTaskQueueE7A8C80C-UlOf6cxrDsrs'
+SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/995765563608/youtube-download-tasks'
 GIT_ROOT = path.join(path.dirname(__file__),'..','..','..','..')
 DATA_ROOT = path.join(GIT_ROOT,'kinetics','data','kinetics700_2020')
 MAX_SQS_BATCH_SIZE = 10
