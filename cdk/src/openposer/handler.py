@@ -4,6 +4,7 @@ from json import loads, dumps
 from config import Config
 from payload import Payload
 from aws import AWS
+from uuid import uuid4
 from skeletal_extract import SkeletonExtractor
 from status import StatusTable, AnalyzeStatus
 from aws_xray_sdk.core import xray_recorder
@@ -28,11 +29,11 @@ class MessageHandler:
     xray_recorder.current_segment().put_annotation('status', str(status.value))
     
     if payload.url.prefix is not None:
-      self.find_videos(payload)
-      AWS.sqs.delete_message(
-        QueueUrl=Config.TASK_QUEUE_URL,
-        ReceiptHandle=receipt_handle)
-      return
+      if self.find_videos(payload) == False:
+        AWS.sqs.delete_message(
+          QueueUrl=Config.TASK_QUEUE_URL,
+          ReceiptHandle=receipt_handle)
+        return
 
     if status == AnalyzeStatus.COMPLETE:
       AWS.sqs.delete_message(
@@ -63,11 +64,18 @@ class MessageHandler:
       Bucket = payload.url.bucket,
       Prefix= payload.url.prefix)
     
+    mp4_file = [m['Key'] for m in response['Contents'] if m['Key'].endswith('.mp4')]
+    if len(mp4_file) == 0:
+      return False
+    if len(mp4_file) == 1:
+      payload.url.object_key = mp4_file[0]
+      return True
+
     response = AWS.sqs.send_message_batch(
       QueueUrl=Config.TASK_QUEUE_URL,
       Entries=[
         {
-          'Id': payload.video_id,
+          'Id': str(uuid4()),
           'MessageBody': dumps({
             'video_id': m['Key'],
             'properties': {
@@ -80,6 +88,7 @@ class MessageHandler:
           })
         } for m in response['Contents'] if m['Key'].endswith('.mp4')
       ])
+    return False
 
   @xray_recorder.capture('download_file')
   def download_file(self, payload:Payload)->Path:

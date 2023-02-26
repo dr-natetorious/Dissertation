@@ -9,6 +9,10 @@ class S3Uri:
   def object_key(self)->str:
     return self.__object_key
   
+  @object_key.setter
+  def object_key(self,value):
+    self.__object_key =value
+  
   @property
   def prefix(self)->str:
     return self.__prefix
