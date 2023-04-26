@@ -1,8 +1,11 @@
 import boto3
 import urllib
-from os import environ, link
 from json import dumps
 from flask import request, redirect
+from handlers.detection import detection_api
+from handlers.youtube import youtube_api
+from handlers.skeleton import skeleton_api
+from handlers.identification import identification_api
 
 def init_flask_for_env():
   """
@@ -17,26 +20,11 @@ def init_flask_for_env():
     return FlaskLambda(__name__)
 
 app = init_flask_for_env()
+app.register_blueprint(detection_api)
+app.register_blueprint(youtube_api)
+app.register_blueprint(skeleton_api)
+app.register_blueprint(identification_api)
 
 @app.route('/heartbeat')
 def hello_world():
   return 'Hello, World!'
-
-@app.route('/video/<id>')
-def get_metadata(id:str):
-  return {
-    'VideoId': id,
-    'Label': 'somelabel'
-  }
-
-@app.route('/youtube/<id>')
-def get_youtube_metadata(id:str):
-  return {
-    'YouTube': id
-  }
-
-@app.route('/cached/<id>')
-def get_collected_files(id:str):
-  return  {
-    'Collected':id
-  }
