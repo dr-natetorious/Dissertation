@@ -1,5 +1,6 @@
 type Query {
   get_annotation(video_id: ID): Annotation
+  get_video(video_id: ID): Video
 }
 
 type Offset {
