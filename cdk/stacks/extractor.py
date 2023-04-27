@@ -16,6 +16,8 @@ from aws_cdk import(
     aws_lambda as lambda_,
     aws_kinesis as kinesis,
     aws_kinesisfirehose as hose,
+    aws_events as events,
+    aws_events_targets as e_targets,
 )
 
 ROOT_DIR = path.join(path.dirname(__file__),'..')
@@ -35,7 +37,7 @@ class ManifestMonitor(Construct):
     self.bucket.grant_read(self.batch_role)
     handler.grant_invoke(self.batch_role)
 
-    with open(path.join(ROOT_DIR,'src','start-manifest','index.py'), 'rt') as f:
+    with open(path.join(ROOT_DIR,'src','control','start-manifest','index.py'), 'rt') as f:
       code = lambda_.Code.from_inline(f.read())
 
     forward_function = lambda_.Function(self,'Function',
@@ -147,8 +149,8 @@ class MovementExtractorConstruct(Construct, IQueuedTask):
       table_class= ddb.TableClass.STANDARD,
       partition_key= ddb.Attribute(name='VideoId',type=ddb.AttributeType.STRING),
       sort_key= ddb.Attribute(name='SortKey', type=ddb.AttributeType.STRING),
-      time_to_live_attribute='Expiration')
-        
+      time_to_live_attribute='Expiration')        
+
     self.function = lambda_.DockerImageFunction(self,'Function',
       allow_all_outbound=True,
       architecture= lambda_.Architecture.X86_64,
@@ -169,12 +171,12 @@ class MovementExtractorConstruct(Construct, IQueuedTask):
       vpc= infra.network.vpc,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       code = lambda_.DockerImageCode.from_image_asset(
-        directory= path.join(ROOT_DIR,'src/extract')))
+        directory= path.join(ROOT_DIR,'src/pipeline/extract')))
     
     self.input_monitor = ManifestMonitor(self,'InputMonitor',
       infra=infra,
       handler=self.function)
-
+    
     self.missing_reports_handler.fetch_queue.grant_send_messages(self.function.role)
     status_table.grant_read_write_data(self.function.role)
     self.output_stream.metadata_stream.grant_write(self.function.role)

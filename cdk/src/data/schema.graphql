@@ -1,0 +1,40 @@
+type Query {
+  get_annotation(video_id: ID): Annotation
+}
+
+type Offset {
+  start_sec: Int
+  end_sec: Int
+}
+
+type BoundingBox {
+  left: Float
+  top: Float
+  width: Float
+  height: Float
+}
+
+type LabelDetection {
+  parent: String
+  name: String!
+  boundingBox: BoundingBox
+  confidence: Float
+}
+
+type Annotation {
+  label: String
+  segment: Offset
+}
+
+type Video {
+  id: ID
+  annotation: Annotation
+  people: [Person]
+  scene_labels: [LabelDetection]
+}
+
+type Person {
+  id: ID
+  segment: Offset!
+  labels: [LabelDetection]
+}

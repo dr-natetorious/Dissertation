@@ -1,6 +1,7 @@
 import builtins
 from typing import List
 from stacks.interfaces import INetworkConstruct, IBaseInfrastructure, IComputeConstruct, IDataStorage
+from stacks.infra_events import ApplicationEventsConstruct
 import aws_cdk as cdk
 from constructs import Construct
 from aws_cdk import(
@@ -234,10 +235,17 @@ class BaseInfrastructureConstruct(Construct, IBaseInfrastructure):
   def compute(self)->IComputeConstruct:
     return self.__compute
   
+  @property
+  def events(self)->ApplicationEventsConstruct:
+    return self.__events
+  
   def __init__(self, scope:Construct, id:str, **kwargs)->None:
     super().__init__(scope,id,**kwargs)
     
     self.__network = NetworkConstruct(self,'Network')
     self.__storage = DataStorageConstruct(self,'Storage', network=self.__network)
     self.__compute = ComputeConstruct(self,'Compute', network=self.__network)
+
+    self.__events = ApplicationEventsConstruct(self,'ApplicationEvents')
+
     return

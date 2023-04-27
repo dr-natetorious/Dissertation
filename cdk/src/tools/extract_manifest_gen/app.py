@@ -46,7 +46,7 @@ def upload_manifest(name:str, videos:list)->None:
     ] for vid in videos)
   )
 
-def generate_manfiests(name:str)->None:
+def generate_manifests(name:str)->None:
   dataset = get_json_file(name)
   keys = list(dataset.keys())
   
@@ -61,4 +61,4 @@ def generate_manfiests(name:str)->None:
     save_manifest(label, labels[label])
 
 if __name__ == '__main__':
-  generate_manfiests('train')
+  generate_manifests('train')

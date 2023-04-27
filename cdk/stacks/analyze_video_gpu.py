@@ -69,7 +69,7 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
     task_definition.add_container('OpenPoseGpu',
       memory_limit_mib=14* 1024,
       gpu_count=1,
-      image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','openposer')),
+      image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','pipeline/openposer')),
       container_name='openpose-analyzer',
       port_mappings=[
         ecs.PortMapping(
@@ -223,3 +223,10 @@ class OpenPoseGpuConstruct(Construct, IQueuedTask):
     infra.storage.data_bucket.grant_read_write(task_definition.task_role)
     task_definition.task_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('CloudWatchLogsFullAccess'))
     task_definition.task_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AWSXrayWriteOnlyAccess'))
+
+class VideoProcessorConstruct(Construct):
+  def __init__(self, scope:Construct, id:str, infra:IBaseInfrastructure,**kwargs)->None:
+    super().__init__(scope,id,**kwargs)
+    
+    self.open_pose_gpu = OpenPoseGpuConstruct(self,'OpenPoseGpu', infra=infra)
+    return

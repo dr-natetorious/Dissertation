@@ -19,13 +19,13 @@ from aws_cdk import(
 
 ROOT_DIR = path.join(path.dirname(__file__),'..')
 
-class DataApiConstruct(Construct):
+class ControlPlaneConstruct(Construct):
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure) -> None:
     super().__init__(scope, id)
-    cdk.Tags.of(self).add(key='construct', value=DataApiConstruct.__name__)
+    cdk.Tags.of(self).add(key='construct', value=ControlPlaneConstruct.__name__)
 
     function = lambda_.DockerImageFunction(self,'Function',
-      function_name='DataApi-Handler',
+      function_name='ControlPlane-Default-Handler',
       environment={
       
       },
@@ -34,10 +34,11 @@ class DataApiConstruct(Construct):
       memory_size=256,
       tracing= lambda_.Tracing.ACTIVE,
       code = lambda_.DockerImageCode.from_image_asset(
-        directory= path.join(ROOT_DIR,'src/api')))
+        directory= path.join(ROOT_DIR,'src/control/api')))
     
     gateway = api.LambdaRestApi(self,'Gateway',
       handler= function,
+      rest_api_name ='kinetic-control-plane',
       proxy=True,
-      description='Data API for interacting with Kinetic',
+      description='Control Plane for interacting with Kinetic',
       cloud_watch_role=True)
