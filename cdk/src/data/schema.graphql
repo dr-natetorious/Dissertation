@@ -32,6 +32,40 @@ type Video {
   annotation: Annotation
   people: [Person]
   scene_labels: [LabelDetection]
+  youtube_opts: YouTubeOptions
+  cached: [VideoCache]
+}
+
+type VideoCache{
+  location: String
+  quality: String
+}
+
+type VideoDetails {
+  title: String
+  lengthSeconds: String
+  channelId: String
+  shortDescription: String
+  viewCount: String
+}
+
+type VideoDownloadFormat {
+  itag: Int
+  mimeType: String
+  bitrate: Int
+  width: Int
+  height: Int
+  lastModified: String
+  quality: String
+  fps: Int
+  qualityLabel: String
+}
+
+type YouTubeOptions {
+  id: ID
+  payload: String
+  details: VideoDetails
+  formats: [VideoDownloadFormat]
 }
 
 type Person {

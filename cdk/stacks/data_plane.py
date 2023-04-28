@@ -63,13 +63,29 @@ class AnnotationDataSource(Construct):
       request_mapping_template=appsync.MappingTemplate.lambda_request(),
       response_mapping_template=appsync.MappingTemplate.lambda_result())
 
-class VideoDataSource(Construct):
+class KineticLambdaDataSource(Construct):
+  @property
+  def function_name(self)->str:
+    return 'kinetic-graphql-'+self.__class__.__name__
+
+  @property
+  def code(self)->lambda_.Code:
+    raise NotImplementedError()
+
+  @property
+  def type_name(self)->str:
+    raise NotImplementedError()
+  
+  @property
+  def field_name(self)->str:
+    raise NotImplementedError()
+
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure, graphql:appsync.IGraphqlApi) -> None:
     super().__init__(scope, id)
 
     function = lambda_.Function(self,'Function',
-      function_name='kinetic-graphql-video',
-      code=lambda_.Code.from_asset(path.join(ROOT_DIR,'src/data/get-video')),
+      function_name=self.function_name,
+      code=self.code,
       handler='index.lambda_function', 
       architecture= lambda_.Architecture.ARM_64,
       runtime= lambda_.Runtime.PYTHON_3_9,
@@ -83,21 +99,86 @@ class VideoDataSource(Construct):
     
     infra.storage.data_bucket.grant_read(function)
 
-    lambda_source = graphql.add_lambda_data_source('VideoLambdaSource',
-      name='VideoQuerySource',
+    lambda_source = graphql.add_lambda_data_source(self.__class__.__name__,
       lambda_function=function)
 
-    graphql.create_resolver('GetVideo',
-      type_name='Query',
-      field_name='get_video',
+    graphql.create_resolver('%s/%s'%(self.type_name,self.field_name),
+      type_name=self.type_name,
+      field_name=self.field_name,
       data_source=lambda_source,
       request_mapping_template=appsync.MappingTemplate.lambda_request(),
-      response_mapping_template=appsync.MappingTemplate.lambda_result())    
+      response_mapping_template=appsync.MappingTemplate.lambda_result())
+
+class VideoDataSource(KineticLambdaDataSource):
+  @property
+  def code(self)->lambda_.Code:
+    return lambda_.Code.from_asset(path.join(ROOT_DIR,'src/data/get-video'))
+
+  @property
+  def type_name(self)->str:
+    return 'Query'
+  
+  @property
+  def field_name(self)->str:
+    return 'get_video'
+
+  def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure, graphql:appsync.IGraphqlApi) -> None:
+    super().__init__(scope, id, infra, graphql)
+
+class PeopleDataSource(KineticLambdaDataSource):
+  @property
+  def code(self)->lambda_.Code:
+    return lambda_.Code.from_asset(path.join(ROOT_DIR,'src/data/get-person'))
+
+  @property
+  def type_name(self)->str:
+    return 'Video'
+  
+  @property
+  def field_name(self)->str:
+    return 'people'
+
+  def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure, graphql:appsync.IGraphqlApi) -> None:
+    super().__init__(scope, id, infra, graphql)
+
+class VideoYouTubeOptionSource(KineticLambdaDataSource):
+  @property
+  def code(self)->lambda_.Code:
+    return lambda_.Code.from_asset(path.join(ROOT_DIR,'src/data/get-video-download'))
+
+  @property
+  def type_name(self)->str:
+    return 'Video'
+  
+  @property
+  def field_name(self)->str:
+    return 'youtube_opts'
+
+  def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure, graphql:appsync.IGraphqlApi) -> None:
+    super().__init__(scope, id, infra, graphql)
+
+class VideoCachedSource(KineticLambdaDataSource):
+  @property
+  def code(self)->lambda_.Code:
+    return lambda_.Code.from_asset(path.join(ROOT_DIR,'src/data/get-video-cache'))
+
+  @property
+  def type_name(self)->str:
+    return 'Video'
+  
+  @property
+  def field_name(self)->str:
+    return 'cached'
+
+  def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure, graphql:appsync.IGraphqlApi) -> None:
+    super().__init__(scope, id, infra, graphql)
+
 
 class DataPlaneConstruct(Construct):
   def __init__(self, scope: Construct, id: str, infra:IBaseInfrastructure) -> None:
     super().__init__(scope, id)
 
+    self.infra = infra
     self.graphql = appsync.GraphqlApi(self,'GraphQL',
       name='kinetic-graphql',
       schema= appsync.SchemaFile.from_asset(path.join(ROOT_DIR,'src/data/schema.graphql')),
@@ -113,3 +194,6 @@ class DataPlaneConstruct(Construct):
 
     AnnotationDataSource(self,'Annotations',infra=infra, graphql=self.graphql)
     VideoDataSource(self,'Video',infra=infra, graphql=self.graphql)
+    PeopleDataSource(self,'People',infra=infra, graphql=self.graphql)
+    VideoYouTubeOptionSource(self,'YouTubeOptions',infra=infra, graphql=self.graphql)
+    VideoCachedSource(self,'VideoCached',infra=infra, graphql=self.graphql)

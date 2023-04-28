@@ -24,7 +24,7 @@ def get_json_file(name:str)->dict:
 
 def display_error_response(response):
   failed = response['Failed']
-  print('[ERROR] Failed to send %d messages due to %s' % (x
+  print('[ERROR] Failed to send %d messages due to %s' % (
     len(failed),
     '; '.join(set([x['Message'] for x in failed]))))
 
