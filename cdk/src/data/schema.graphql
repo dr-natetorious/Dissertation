@@ -16,10 +16,20 @@ type BoundingBox {
 }
 
 type LabelDetection {
-  parent: String
+  parents: [LabelName]
+  aliases: [LabelName]
+  categories: [LabelName]
   name: String!
-  boundingBox: BoundingBox
   confidence: Float
+  instances: [LabelInstance]
+}
+
+type LabelInstance{
+  confidence: Float
+  boundingBox: BoundingBox
+}
+type LabelName {
+  name: String
 }
 
 type Annotation {
@@ -31,9 +41,29 @@ type Video {
   id: ID
   annotation: Annotation
   people: [Person]
-  scene_labels: [LabelDetection]
+  analysis :VideoFrameAnalysis
   youtube_opts: YouTubeOptions
   cached: [VideoCache]
+}
+
+type VideoFrameAnalysis{
+  manifest: VideoFrameAnalysisManifest
+  frames: [KeyFrameInfo]
+}
+
+type KeyFrameInfo{
+  offset: Float
+  frame_location: KeyFrameInfoLocation
+  labels: [LabelDetection]
+}
+
+type VideoFrameAnalysisManifest{
+  location: String
+}
+
+type KeyFrameInfoLocation{
+  sourceUri: String
+  skeletonUri: String
 }
 
 type VideoCache{

@@ -23,7 +23,7 @@ class AnnotationDataSource(Construct):
   def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure, graphql:appsync.IGraphqlApi) -> None:
     super().__init__(scope, id)
 
-    annotation_table = ddb.Table(self,'Table',
+    self.annotation_table = ddb.Table(self,'Table',
       table_name='video-annotations',
       billing_mode= ddb.BillingMode.PAY_PER_REQUEST,
       removal_policy = cdk.RemovalPolicy.DESTROY,
@@ -39,11 +39,11 @@ class AnnotationDataSource(Construct):
       vpc= infra.network.vpc,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       environment={
-        'TABLE_NAME': annotation_table.table_name,
+        'TABLE_NAME': self.annotation_table.table_name,
         'REGION': cdk.Aws.REGION,
       })
     
-    annotation_table.grant_read_data(function)
+    self.annotation_table.grant_read_data(function)
     
     lambda_source = graphql.add_lambda_data_source('AnnotationLambdaSource',
       name='AnnotationQuerySource',
@@ -80,10 +80,18 @@ class KineticLambdaDataSource(Construct):
   def field_name(self)->str:
     raise NotImplementedError()
 
-  def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure, graphql:appsync.IGraphqlApi) -> None:
+  def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure, graphql:appsync.IGraphqlApi, environment=None) -> None:
     super().__init__(scope, id)
 
-    function = lambda_.Function(self,'Function',
+    if environment is None:
+      environment = dict()
+
+    environment.update({
+      'BUCKET': infra.storage.data_bucket.bucket_name,
+      'REGION': cdk.Aws.REGION
+    })
+
+    self.function = lambda_.Function(self,'Function',
       function_name=self.function_name,
       code=self.code,
       handler='index.lambda_function', 
@@ -92,15 +100,12 @@ class KineticLambdaDataSource(Construct):
       log_retention= logs.RetentionDays.FIVE_DAYS,
       vpc= infra.network.vpc,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
-      environment={
-        'BUCKET': infra.storage.data_bucket.bucket_name,
-        'REGION': cdk.Aws.REGION,
-      })
+      environment=environment)
     
-    infra.storage.data_bucket.grant_read(function)
+    infra.storage.data_bucket.grant_read(self.function)
 
     lambda_source = graphql.add_lambda_data_source(self.__class__.__name__,
-      lambda_function=function)
+      lambda_function=self.function)
 
     graphql.create_resolver('%s/%s'%(self.type_name,self.field_name),
       type_name=self.type_name,
@@ -174,6 +179,26 @@ class VideoCachedSource(KineticLambdaDataSource):
     super().__init__(scope, id, infra, graphql)
 
 
+class VideoAnalysisSource(KineticLambdaDataSource):
+  @property
+  def code(self)->lambda_.Code:
+    return lambda_.Code.from_asset(path.join(ROOT_DIR,'src/data/get-video-analysis'))
+
+  @property
+  def type_name(self)->str:
+    return 'Video'
+  
+  @property
+  def field_name(self)->str:
+    return 'analysis'
+
+  def __init__(self, scope: Construct, id: builtins.str, infra:IBaseInfrastructure, graphql:appsync.IGraphqlApi, annotation_table:ddb.ITable) -> None:
+    super().__init__(scope, id, infra, graphql, environment={
+      'ANNOTATION_TABLE':annotation_table.table_name
+    })
+
+    annotation_table.grant_read_data(self.function)
+
 class DataPlaneConstruct(Construct):
   def __init__(self, scope: Construct, id: str, infra:IBaseInfrastructure) -> None:
     super().__init__(scope, id)
@@ -192,8 +217,9 @@ class DataPlaneConstruct(Construct):
       #   ).API_KEY),
       xray_enabled=True)
 
-    AnnotationDataSource(self,'Annotations',infra=infra, graphql=self.graphql)
+    annotations = AnnotationDataSource(self,'Annotations',infra=infra, graphql=self.graphql)
     VideoDataSource(self,'Video',infra=infra, graphql=self.graphql)
     PeopleDataSource(self,'People',infra=infra, graphql=self.graphql)
     VideoYouTubeOptionSource(self,'YouTubeOptions',infra=infra, graphql=self.graphql)
     VideoCachedSource(self,'VideoCached',infra=infra, graphql=self.graphql)
+    VideoAnalysisSource(self,'VideoAnalysis',infra=infra, graphql=self.graphql, annotation_table=annotations.annotation_table)

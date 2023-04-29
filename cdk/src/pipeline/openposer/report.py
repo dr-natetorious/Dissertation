@@ -68,7 +68,7 @@ class Report:
         Key=self.document['TarFile']['Key'],
         Body = f.read(),
         Metadata={
-        'VideoId': self.payload.video_id
+          'VideoId': self.payload.video_id
         })
     unlink(self.tar_file_name)
 
