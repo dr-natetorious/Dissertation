@@ -1,5 +1,5 @@
 import boto3
-from typing import List
+from typing import List,Mapping
 from os import environ
 from json import loads, dumps
 
@@ -84,11 +84,22 @@ def get_rekon_analysis(video_id:str)->dict:
 
   return object_key, loads(response)
 
+def get_extract_analysis(video_id:str)->dict:
+  '''Fetch the MovemementTracker extraction output for the target video'''
+  object_key = 'extract/%s/skeletons.json' % video_id
+  response = s3.get_object(
+    Bucket=BUCKET,
+    Key=object_key
+  )['Body'].read()
+
+  return object_key, loads(response)
+
 def lambda_function(event, context=None)->dict:
   print(event)
 
   video_id = get_videoid(event)
   op_object_key, op_analysis = get_openpose_analysis(video_id)
+  extr_object_key, extract_analysis = get_extract_analysis(video_id)
   rek_object_key, rek_analysis = get_rekon_analysis(video_id)
 
   op_frames = dict()
@@ -97,6 +108,13 @@ def lambda_function(event, context=None)->dict:
   rek_frames = dict()
   for x in rek_analysis['KeyFrames']['Sampled']:
     rek_frames[x['Offset']]= x
+  actions = dict()
+  for action in extract_analysis['Actions']:
+    offset = action['Metadata']['Frame']['Offset']
+    if offset not in actions:
+      actions[offset]=list()
+    actions[offset].append(action)
+
 
   returned_frames = list()
   for offset in sorted(op_frames.keys()):
@@ -107,7 +125,7 @@ def lambda_function(event, context=None)->dict:
         'sourceUri': op_f['Location']['input'],
         'skeletonUri': op_f['Location']['output'],
       },
-      'bodies': [render_body_info(x) for x in op_f['Bodies']],
+      'bodies': render_bodies(op_f['Bodies'],offset,actions),
       'people_count': op_f['PeopleCount']
     }
     returned_frames.append(frame)
@@ -141,10 +159,26 @@ def lambda_function(event, context=None)->dict:
   return {
     'manifest_files':{
       'openpose_analysis': op_object_key,
+      'movement_analysis': extr_object_key,
       'rekon_analysis': rek_object_key
     },
     'frames': returned_frames
   }
+
+def render_bodies(bodies:List[List[List[int]]], offset, actions:Mapping[float,List[dict]])->dict:
+  '''Renders the Frame->body section'''
+  results = list()
+  for body_ix in range(len(bodies)):
+    body = render_body_info(bodies[body_ix])
+    results.append(body)
+    if offset in actions:
+      for action in actions[offset]:
+        if action['Metadata']['BodyId']['Index'] == body_ix:
+          body['identity'] = {
+            'body_id': action['PersonId']
+          }
+          break
+  return results
 
 def render_body_info(body:List[List[int]])->dict:
   result = dict()
