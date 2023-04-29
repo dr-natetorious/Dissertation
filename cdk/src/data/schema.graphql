@@ -47,21 +47,59 @@ type Video {
 }
 
 type VideoFrameAnalysis{
-  manifest: VideoFrameAnalysisManifest
-  frames: [KeyFrameInfo]
+  manifest_files: VideoFrameAnalysisManifest
+  frames: [FrameInfo]
 }
 
-type KeyFrameInfo{
+type FrameInfo{
   offset: Float
-  frame_location: KeyFrameInfoLocation
+  location: FrameInfoLocation
+  people_count: Int
+  bodies: [HumanBody]
   labels: [LabelDetection]
 }
 
-type VideoFrameAnalysisManifest{
-  location: String
+type HumanBody {
+  nose: BodyPartPosition
+  neck: BodyPartPosition
+  rshoulder: BodyPartPosition
+  relbow: BodyPartPosition
+  rwrist: BodyPartPosition
+  lshoulder: BodyPartPosition
+  lelbow: BodyPartPosition
+  lwrist: BodyPartPosition
+  midhip: BodyPartPosition
+  rhid: BodyPartPosition
+  rknee: BodyPartPosition
+  rankle: BodyPartPosition
+  lhip: BodyPartPosition
+  lknee: BodyPartPosition
+  lankle: BodyPartPosition
+  reye: BodyPartPosition
+  leye: BodyPartPosition
+  rear: BodyPartPosition
+  lear: BodyPartPosition
+  lbigtoe: BodyPartPosition
+  rbigtoe: BodyPartPosition
+  lsmalltoe: BodyPartPosition
+  rsmalltoe: BodyPartPosition
+  rheel: BodyPartPosition
+  background: BodyPartPosition
 }
 
-type KeyFrameInfoLocation{
+type BodyPartPosition {
+  x: Float
+  y: Float
+  c: Float
+  visible: Boolean
+}
+
+type VideoFrameAnalysisManifest{
+  openpose_analysis: String
+  rekon_analysis: String
+}
+
+type FrameInfoLocation{
   sourceUri: String
   skeletonUri: String
 }
