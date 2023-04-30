@@ -13,6 +13,9 @@ class NoFramesException(Exception):
   pass
 
 class Report:
+  '''
+  Represents the output of the OpenPose GPU skeletal extraction.
+  '''
   def __init__(self, bucket:str, object_key:str) -> None:
     self.bucket = bucket
     self.object_key = object_key
@@ -28,6 +31,9 @@ class Report:
 
     self.json = loads(request['Body'].read())
 
+    '''
+    Get the first frame location.        
+    '''
     location = [f.location for f in self.frames if not f.location is None]
     if len(location) == 0:
       raise NoFramesException()
@@ -41,16 +47,28 @@ class Report:
 
   @property
   def image_size(self)->Tuple[int,int]:
+    '''
+    Returns the size of the image.    
+    '''
     return self.image.size
 
   @property
   def bucket_name(self)->str:
+    '''
+    Returns the name of the bucket.
+    '''    
     return self.json['Bucket']
 
   @property
   def video_id(self)->str:
+    '''
+    Returns the video id.
+    '''
     return self.json['VideoId']
 
   @property
   def frames(self)->List[Frame]:
+    '''
+    Returns a list of frames.
+    '''
     return [Frame(x) for x in self.json['Frames']]

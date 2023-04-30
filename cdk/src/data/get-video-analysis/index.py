@@ -7,6 +7,7 @@ REGION_NAME = environ.get('REGION', environ.get('AWS_DEFAULT_REGION', 'us-east-2
 ANNOTATION_TABLE= environ.get('ANNOTATION_TABLE', 'video-annotations')
 BUCKET = environ.get('BUCKET', 'data.dissertation.natetorio.us')
 CONFIDENCE_THRESHOLD = 0.7
+FRAME_SAMPLING_RATE=0.5
 
 BODY_PARTS = dict()
 BODY_PARTS[0]=  "Nose"
@@ -36,7 +37,7 @@ BODY_PARTS[23]="RSmallToe"
 BODY_PARTS[24]="RHeel"
 BODY_PARTS[25]="Background"
 
-video_label_cache = dict()
+video_annotation_cache = dict()
 
 s3 = boto3.client('s3', region_name=REGION_NAME)
 ddb = boto3.client('dynamodb', region_name=REGION_NAME)
@@ -49,10 +50,10 @@ def get_videoid(event:dict):
     return event['source']['id']
   raise NotImplementedError('Unable to find videoid')
 
-def get_label(video_id:str)->str:
+def get_annotation(video_id:str)->str:
   '''Fetch the Video Label for the target video'''
-  if video_id in video_label_cache:
-    return video_label_cache[video_id]
+  if video_id in video_annotation_cache:
+    return video_annotation_cache[video_id]
   
   response = ddb.get_item(
     TableName= ANNOTATION_TABLE,
@@ -60,9 +61,14 @@ def get_label(video_id:str)->str:
       'VideoId': {'S': video_id}
     })
 
-  label = response['Item']['label']['S']
-  video_label_cache[video_id] = label
-  return label
+  annotation = response['Item']
+  video_annotation_cache[video_id] = annotation
+  return annotation
+
+def get_label(video_id): return get_annotation(video_id)['label']['S']
+def get_labeled_segment(video_id): 
+  start,end = get_annotation(video_id)['segment']['NS']
+  return float(start), float(end)
 
 def get_openpose_analysis(video_id:str)->dict:
   '''Fetch the OpenPose output for the target video'''
@@ -72,7 +78,12 @@ def get_openpose_analysis(video_id:str)->dict:
     Key=object_key
   )['Body'].read()
 
-  return object_key, loads(response)
+  op_analysis = loads(response)
+  op_frames = dict()
+  for x in op_analysis['Frames']:
+    op_frames[x['Offset']]= x
+
+  return object_key, op_frames
 
 def get_rekon_analysis(video_id:str)->dict:
   '''Fetch the Rekognition Analysis output for the target video'''
@@ -82,7 +93,12 @@ def get_rekon_analysis(video_id:str)->dict:
     Key=object_key
   )['Body'].read()
 
-  return object_key, loads(response)
+  rek_analysis = loads(response)
+  rek_frames = dict()
+  for x in rek_analysis['KeyFrames']['Sampled']:
+    rek_frames[x['Offset']]= x
+
+  return object_key, rek_analysis
 
 def get_extract_analysis(video_id:str)->dict:
   '''Fetch the MovemementTracker extraction output for the target video'''
@@ -91,30 +107,30 @@ def get_extract_analysis(video_id:str)->dict:
     Bucket=BUCKET,
     Key=object_key
   )['Body'].read()
+  extract_analysis = loads(response)
 
-  return object_key, loads(response)
+  # allocate each frame slot in advance
+  actions = dict()
+  start,end = get_labeled_segment(video_id)
+  while start < end:
+    actions[start] = list()
+    start += FRAME_SAMPLING_RATE
+
+  for action in extract_analysis['Actions']:
+    offset = action['Metadata']['Frame']['Offset']
+    sequence = action['Action']
+    for sid in range(len(sequence)):
+      actions[offset+(sid*FRAME_SAMPLING_RATE)].append(action)
+
+  return object_key, actions
 
 def lambda_function(event, context=None)->dict:
   print(event)
 
   video_id = get_videoid(event)
-  op_object_key, op_analysis = get_openpose_analysis(video_id)
-  extr_object_key, extract_analysis = get_extract_analysis(video_id)
-  rek_object_key, rek_analysis = get_rekon_analysis(video_id)
-
-  op_frames = dict()
-  for x in op_analysis['Frames']:
-    op_frames[x['Offset']]= x
-  rek_frames = dict()
-  for x in rek_analysis['KeyFrames']['Sampled']:
-    rek_frames[x['Offset']]= x
-  actions = dict()
-  for action in extract_analysis['Actions']:
-    offset = action['Metadata']['Frame']['Offset']
-    if offset not in actions:
-      actions[offset]=list()
-    actions[offset].append(action)
-
+  op_object_key, op_frames = get_openpose_analysis(video_id)
+  extr_object_key, actions = get_extract_analysis(video_id)
+  rek_object_key, rek_frames = get_rekon_analysis(video_id)
 
   returned_frames = list()
   for offset in sorted(op_frames.keys()):
@@ -175,7 +191,7 @@ def render_bodies(bodies:List[List[List[int]]], offset, actions:Mapping[float,Li
       for action in actions[offset]:
         if action['Metadata']['BodyId']['Index'] == body_ix:
           body['identity'] = {
-            'body_id': action['PersonId']
+            'person_id': action['PersonId']
           }
           break
   return results

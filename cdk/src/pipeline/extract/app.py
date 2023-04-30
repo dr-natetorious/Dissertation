@@ -92,14 +92,14 @@ if __name__ == '__main__':
     "invocationSchemaVersion": "1.0",
     "invocationId": "YXNkbGZqYWRmaiBhc2RmdW9hZHNmZGpmaGFzbGtkaGZza2RmaAo",
     "job": {
-        "id": "f3cc4f60-61f6-4a2b-8a21-d07600c373ce"
+      "id": "f3cc4f60-61f6-4a2b-8a21-d07600c373ce"
     },
     "tasks": [
-        {
-            "taskId": "dGFza2lkZ29lc2hlcmUK",
-            "s3Key": "report/square+dancing/wGwVDCoUzoYzzzz.json",
-            "s3VersionId": "1",
-            "s3BucketArn": "arn:aws:s3:::data.dissertation.natetorio.us"
-        }
+      {
+        "taskId": "dGFza2lkZ29lc2hlcmUK",
+        "s3Key": "report/clay pottery making/---0dWlqevI.json",
+        "s3VersionId": "1",
+        "s3BucketArn": "arn:aws:s3:::data.dissertation.natetorio.us"
+      }
     ]  
   })

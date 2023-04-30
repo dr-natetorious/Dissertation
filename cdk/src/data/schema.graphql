@@ -60,6 +60,7 @@ type FrameInfo{
 }
 
 type HumanBody {
+  identity: BodyIdentity
   nose: BodyPartPosition
   neck: BodyPartPosition
   rshoulder: BodyPartPosition
@@ -85,6 +86,10 @@ type HumanBody {
   rsmalltoe: BodyPartPosition
   rheel: BodyPartPosition
   background: BodyPartPosition
+}
+
+type BodyIdentity{
+  person_id: Int
 }
 
 type BodyPartPosition {

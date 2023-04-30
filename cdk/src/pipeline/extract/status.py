@@ -15,8 +15,14 @@ class ExtractStatus(Enum):
   COMPLETE='COMPLETE'
 
 class StatusTable:
+  '''
+  Represents the processing status of every video in the data set.
+  '''
   @property
   def table_name(self)->str:
+    '''
+    Returns the name of the table.
+    '''
     return self.__table_name
 
   def __init__(self, table_name:str) -> None:
@@ -26,11 +32,14 @@ class StatusTable:
   
   @xray_recorder.capture('get_extract_status')
   def get_extract_status(self,video_id:str)->Tuple[ExtractStatus, datetime]:
+    '''
+    Gets the extraction status for a specified video_id
+    '''
     response = ddb_client.get_item(
       TableName=Config.STATUS_TABLE,
       Key={
         'VideoId': {'S': video_id},
-        'SortKey': {'S': 'Extract::Status' }
+        'SortKey': {'S': 'Extract::Status::v2' }
       },
       AttributesToGet=[
         'extractStatus','lastUpdated'
@@ -47,13 +56,13 @@ class StatusTable:
     xray_recorder.put_annotation('extractLastUpdated',lastUpdated)
     return (ExtractStatus(status),datetime.fromtimestamp(float(lastUpdated)))
 
-  @xray_recorder.capture('set_extractStatus')
+  @xray_recorder.capture('set_extract_status')
   def set_extract_status(self, video_id:str, status:ExtractStatus)->None:
-    response = ddb_client.update_item(
+    _ = ddb_client.update_item(
       TableName=Config.STATUS_TABLE,
       Key={
         'VideoId': {'S': video_id},
-        'SortKey': {'S': 'Extract::Status'}
+        'SortKey': {'S': 'Extract::Status::v2' }
       },
       UpdateExpression="SET extractStatus=:extractStatus, lastUpdated=:lastUpdated",
       ExpressionAttributeValues={
