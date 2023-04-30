@@ -97,7 +97,8 @@ if __name__ == '__main__':
     "tasks": [
       {
         "taskId": "dGFza2lkZ29lc2hlcmUK",
-        "s3Key": "report/clay pottery making/---0dWlqevI.json",
+        #"s3Key": "report/assembling+bicycle/g9c_ftbdc9E.json",
+        "s3Key": "report/getting+a+piercing/n5pmNuxcD80.json",
         "s3VersionId": "1",
         "s3BucketArn": "arn:aws:s3:::data.dissertation.natetorio.us"
       }

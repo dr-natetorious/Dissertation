@@ -30,27 +30,28 @@ class Report:
       request = s3.get_object(Bucket=self.bucket, Key=self.object_key.replace('+',' '))
 
     self.json = loads(request['Body'].read())
+    self.frames = [Frame(self,x) for x in self.json['Frames']]
 
-    '''
-    Get the first frame location.        
-    '''
-    location = [f.location for f in self.frames if not f.location is None]
-    if len(location) == 0:
-      raise NoFramesException()
+    # '''
+    # Get the first frame location.        
+    # '''
+    # location = [f.location for f in self.frames if not f.location is None]
+    # if len(location) == 0:
+    #   raise NoFramesException()
     
-    location = location[0]
-    request = s3.get_object(Bucket = self.bucket, Key=location.input_frame_uri)
-    bytes = BytesIO(request['Body'].read())
-    bytes.seek(0)
+    # location = location[0]
+    # request = s3.get_object(Bucket = self.bucket, Key=location.input_frame_uri)
+    # bytes = BytesIO(request['Body'].read())
+    # bytes.seek(0)
 
-    self.image = Image.open(bytes)
+    # self.image = Image.open(bytes)
 
-  @property
-  def image_size(self)->Tuple[int,int]:
-    '''
-    Returns the size of the image.    
-    '''
-    return self.image.size
+  # @property
+  # def image_size(self)->Tuple[int,int]:
+  #   '''
+  #   Returns the size of the image.    
+  #   '''
+  #   return self.image.size
 
   @property
   def bucket_name(self)->str:
@@ -71,4 +72,12 @@ class Report:
     '''
     Returns a list of frames.
     '''
-    return [Frame(x) for x in self.json['Frames']]
+    return self.__frames
+  
+  @frames.setter
+  
+  def frames(self,value:List[Frame])->None:
+    '''
+    Sets the frames.
+    '''
+    self.__frames = value

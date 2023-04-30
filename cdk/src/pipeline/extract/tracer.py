@@ -18,7 +18,7 @@ class MovementTracker:
   '''
   def __init__(self, report:Report) -> None:
     self.report = report
-    self.image = report.image
+    #self.image = report.image
 
   @xray_recorder.capture('MovementTracker::process_report')
   def process_report(self):
@@ -65,8 +65,8 @@ class MovementTracker:
       Body=dumps({
         'Video':{
           'Id':self.report.video_id,
-          'Width': self.image.width,
-          'Height': self.image.height,
+          # 'Width': self.image.width,
+          # 'Height': self.image.height,
         },
         'Report': {
           'Bucket': self.report.bucket_name,
@@ -178,7 +178,7 @@ class MovementTracker:
           if iy in dups:
             break
               
-          bob = people[iy]             
+          bob = people[iy]
           for f_iy in range(0, len(bob)):
             dist = int(np.sum(people[ix][f_ix] - people[iy][f_iy]))
             if dist == 0:

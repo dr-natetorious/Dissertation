@@ -1,5 +1,6 @@
 from typing import List
 from body import Body
+# from PIL import Image
 
 class Location:
   '''
@@ -22,12 +23,22 @@ class Location:
     '''
     return self.json['output']
 
+class TarLocation(Location):
+  '''
+  Represents where a frame is stored in Amazon S3
+  '''
+  def __init__(self, definition:dict, tar_file:str) -> None:
+    self.json = definition
+    self.tar_file = tar_file
+  
+
 class Frame:
   '''
   Represents a single frame within a video
   '''
-  def __init__(self, definition:dict) -> None:
+  def __init__(self, report, definition:dict) -> None:
     self.json = definition
+    self.report = report
     self.__bodies = list()
     for ix in range(len(self.json['Bodies'])):
       self.__bodies.append(Body(self.json['Bodies'][ix],index=ix, frame_offset=self.offset_seconds))
@@ -44,7 +55,10 @@ class Frame:
     '''
     The location of the frame in Amazon S3
     '''
-    return Location(self.json['Location'])
+    if 'Location' in self.json:
+      return Location(self.json['Location'])
+    elif 'TarLocation' in self.json:
+      return Location(self.json['TarLocation'])
 
   @property
   def bodies(self)->List[Body]:
