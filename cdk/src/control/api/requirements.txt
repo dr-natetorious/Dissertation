@@ -1,0 +1,5 @@
+flask
+requests
+flask-lambda
+boto3
+aws-xray-sdk

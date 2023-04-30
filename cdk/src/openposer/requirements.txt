@@ -1,4 +1,0 @@
-requests
-boto3
-aws-xray-sdk
-opencv-python

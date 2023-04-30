@@ -1,5 +1,0 @@
-numpy
-requests
-boto3
-aws-xray-sdk
-pillow

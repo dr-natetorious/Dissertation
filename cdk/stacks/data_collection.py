@@ -62,7 +62,7 @@ class YouTubeDownloadConstruct(Construct, IQueuedTask):
     )
 
     task_definition.add_container('Collector', 
-      image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','collection')),
+      image=ecs.ContainerImage.from_asset(path.join(ROOT_DIR,'src','pipeline/collection')),
       container_name='youtube-download',
       port_mappings=[
         ecs.PortMapping(

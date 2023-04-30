@@ -3,11 +3,12 @@
 import aws_cdk as cdk
 from constructs import Construct
 from stacks.data_collection import DataCollectionConstruct
-from stacks.base_infra import BaseInfrastructureConstruct
-from stacks.analyze_video import VideoProcessorConstruct
+from stacks.infra_base import BaseInfrastructureConstruct
+from stacks.analyze_video_gpu import VideoProcessorConstruct
 from stacks.extractor import MovementExtractorConstruct
-from stacks.api import DataApiConstruct
+from stacks.api import ControlPlaneConstruct
 from stacks.rekon import RekognitionConstruct
+from stacks.data_plane import DataPlaneConstruct
 
 class KineticStack(cdk.Stack):
   def __init__(self, scope: Construct, id:str, **kwargs):
@@ -18,7 +19,9 @@ class KineticStack(cdk.Stack):
     DataCollectionConstruct(self,'DataCollection', infra=infra)
     VideoProcessorConstruct(self,'VideoProcessor', infra=infra)
     MovementExtractorConstruct(self,'MovementExtractor', infra=infra)
-    DataApiConstruct(self,'DataApi', infra=infra)
+    ControlPlaneConstruct(self,'ControlPlane', infra=infra)
+
+    DataPlaneConstruct(self,'DataPlane', infra=infra)
     RekognitionConstruct(self,'Rekon', infra=infra)
 
 

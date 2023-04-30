@@ -1,0 +1,148 @@
+type Query {
+  get_annotation(video_id: ID): Annotation
+  get_video(video_id: ID): Video
+}
+
+type Offset {
+  start_sec: Int
+  end_sec: Int
+}
+
+type BoundingBox {
+  left: Float
+  top: Float
+  width: Float
+  height: Float
+}
+
+type LabelDetection {
+  parents: [LabelName]
+  aliases: [LabelName]
+  categories: [LabelName]
+  name: String!
+  confidence: Float
+  instances: [LabelInstance]
+}
+
+type LabelInstance{
+  confidence: Float
+  boundingBox: BoundingBox
+}
+type LabelName {
+  name: String
+}
+
+type Annotation {
+  label: String
+  segment: Offset
+}
+
+type Video {
+  id: ID
+  annotation: Annotation
+  people: [Person]
+  analysis :VideoFrameAnalysis
+  youtube_opts: YouTubeOptions
+  cached: [VideoCache]
+}
+
+type VideoFrameAnalysis{
+  manifest_files: VideoFrameAnalysisManifest
+  frames: [FrameInfo]
+}
+
+type FrameInfo{
+  offset: Float
+  location: FrameInfoLocation
+  people_count: Int
+  bodies: [HumanBody]
+  labels: [LabelDetection]
+}
+
+type HumanBody {
+  identity: BodyIdentity
+  nose: BodyPartPosition
+  neck: BodyPartPosition
+  rshoulder: BodyPartPosition
+  relbow: BodyPartPosition
+  rwrist: BodyPartPosition
+  lshoulder: BodyPartPosition
+  lelbow: BodyPartPosition
+  lwrist: BodyPartPosition
+  midhip: BodyPartPosition
+  rhid: BodyPartPosition
+  rknee: BodyPartPosition
+  rankle: BodyPartPosition
+  lhip: BodyPartPosition
+  lknee: BodyPartPosition
+  lankle: BodyPartPosition
+  reye: BodyPartPosition
+  leye: BodyPartPosition
+  rear: BodyPartPosition
+  lear: BodyPartPosition
+  lbigtoe: BodyPartPosition
+  rbigtoe: BodyPartPosition
+  lsmalltoe: BodyPartPosition
+  rsmalltoe: BodyPartPosition
+  rheel: BodyPartPosition
+  background: BodyPartPosition
+}
+
+type BodyIdentity{
+  person_id: Int
+}
+
+type BodyPartPosition {
+  x: Float
+  y: Float
+  c: Float
+  visible: Boolean
+}
+
+type VideoFrameAnalysisManifest{
+  openpose_analysis: String
+  rekon_analysis: String
+}
+
+type FrameInfoLocation{
+  sourceUri: String
+  skeletonUri: String
+}
+
+type VideoCache{
+  location: String
+  quality: String
+}
+
+type VideoDetails {
+  title: String
+  lengthSeconds: String
+  channelId: String
+  shortDescription: String
+  viewCount: String
+}
+
+type VideoDownloadFormat {
+  itag: Int
+  mimeType: String
+  bitrate: Int
+  width: Int
+  height: Int
+  lastModified: String
+  quality: String
+  fps: Int
+  qualityLabel: String
+}
+
+type YouTubeOptions {
+  id: ID
+  payload: String
+  details: VideoDetails
+  formats: [VideoDownloadFormat]
+}
+
+type Person {
+  id: ID
+  segment: Offset!
+  labels: [LabelDetection]
+}

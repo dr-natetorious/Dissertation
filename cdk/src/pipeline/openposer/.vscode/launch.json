@@ -1,0 +1,33 @@
+{
+  "name": "Attach",
+  "type": "python",
+  "request": "attach",
+  "port": 8879,
+  "debugServer": 8888,
+  "host": "localhost",
+  "pathMappings": [
+    {
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "/files/",
+    }
+  ],
+  "logToFile": true,
+  "configurations": [
+    {
+      "name": "Python: Remote Attach",
+      "type": "python",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 8888
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "."
+        }
+      ],
+      "justMyCode": true
+    }
+  ],
+}

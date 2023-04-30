@@ -78,7 +78,7 @@ class MonitorS3BatchJobConstruct(Construct):
     trigger_bucket.grant_read(self.batch_role)
     handler.grant_invoke(self.batch_role)
 
-    with open(path.join(ROOT_DIR,'src','start-manifest','index.py'), 'rt') as f:
+    with open(path.join(ROOT_DIR,'src','control','start-manifest','index.py'), 'rt') as f:
       code = lambda_.Code.from_inline(f.read())
 
     forward_function = lambda_.Function(self,'Function',
@@ -172,7 +172,7 @@ class RekognitionConstruct(Construct):
       vpc= infra.network.vpc,
       vpc_subnets= ec2.SubnetSelection(subnet_group_name='Default'),
       code = lambda_.DockerImageCode.from_image_asset(
-        directory= path.join(ROOT_DIR,'src/rekon')))
+        directory= path.join(ROOT_DIR,'src/pipeline/rekon')))
 
     self.monitor = MonitorS3BatchJobConstruct(self,'BucketTrigger',
       infra=infra,
